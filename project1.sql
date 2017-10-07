@@ -1,3 +1,5 @@
+use Pokemon;
+
 /* 01 */
 SELECT name
 FROM Trainer
