@@ -23,7 +23,7 @@ TARGET=main
 
 all: $(TARGET)
 
-$(TARGET): $(TARGET_OBJ)
+$(TARGET): $(TARGET_SRC) $(SRCS_FOR_LIB)
 	$(CC) $(CFLAGS) -o $(OBJS_FOR_LIB) -c $(SRCS_FOR_LIB)
 	make static_library
 	$(CC) $(CFLAGS) -o $@ $^ -L $(LIBS) -lbpt

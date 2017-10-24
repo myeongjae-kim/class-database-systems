@@ -1,171 +1,146 @@
+/* File Name : bpt.h
+ * Author    : Kim, Myeong Jae
+ * Due Date  : 2017-11-5
+ *
+ * This is a header file of disk-based b+tree
+ * The interface this data structure provide is below. */
+
+
 #ifndef __BPT_H__
 #define __BPT_H__
 
-// Uncomment the line below if you are compiling on Windows.
-// #define WINDOWS
+// Allow system to handle a file which is bigger than 4GB
+#define _LARGEFILE64_SOURCE
+
+
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#ifdef WINDOWS
-#define bool char
-#define false 0
-#define true 1
+
+#include <unistd.h>
+#include <fcntl.h>
+
+#define DBG
+
+#define PAGE_SIZE 4096
+
+// Generally, 'offset' means 'page number * PAGE_SIZE'
+
+/* page header and record */
+#define HEADER_DUMMY_SIZE (120 - (8 + 4 + 4))
+// The size of page_header_t is 128 byte.
+typedef struct __page_header {
+  uint64_t linked_page_offset;
+  uint32_t is_leaf;
+  uint32_t number_of_keys;
+  const char dummy[HEADER_DUMMY_SIZE];
+
+  // This can be used as:
+  //   1. Right Sibling Page Offset (Leaf Page)
+  //   2. One More Page Offset (Internal Page)
+  uint64_t one_more_page_offset;
+} page_header_t;
+
+
+#define VALUE_SIZE (128 - 8)
+typedef struct __record {
+  uint64_t key;
+  char value[VALUE_SIZE];
+} record_t;
+
+
+// This type is used in internal page
+typedef struct __internal_page_element {
+  uint64_t key;
+  uint64_t page_offset;
+} internal_page_element_t;
+
+
+/****** Pages ******/
+
+// It is a structure of header page.
+typedef struct __header_page {
+  uint64_t free_page_offset;
+  uint64_t root_page_offset;
+  uint64_t number_of_pages;
+} header_page_t;
+
+#define RECORD_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
+    / sizeof(record_t))
+typedef struct __leaf_page {
+  page_header_t header;
+  record_t records[RECORD_PER_PAGE];
+} leaf_page_t;
+
+#define OFFSETS_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
+    / sizeof(internal_page_element_t))
+typedef struct __internal_page {
+  page_header_t header;
+  internal_page_element_t offsets[OFFSETS_PER_PAGE];
+} internal_page_t;
+
+
+
+
+// Below type will not be used.
+/* typedef struct __free_page {
+ *   uint64_t next_free_page_offset;
+ * } free_page_t; */
+
+
+/*** Interface ***/
+
+// Open database
+// If there is no file, create a db and initialize.
+int open_db (char *pathname);
+
+
+int insert (int64_t key, char *value);
+
+
+char * find (int64_t key);
+
+
+int delete (int64_t key);
+
+/*** Interface Ends ***/
+
+
+/** Internal Functions
+ * These functions are only used in bpt.c
+ * Below declarations will be commenterized.
+ * **/
+
+/** Utility functions **/
+
+/* It is registered as exit handler. It closes a database file. */
+void close_db(void);
+
+/* This function returns the number of current page  */
+uint64_t get_current_page_number(void);
+
+/* This function moves file offset to target page */
+void go_to_page(const uint64_t page_number);
+
+/* This function prints haeder page */
+void print_header_page(void);
+
+/* This function prints a content of page including header */
+void print_page(const uint64_t page_number);
+
+/* This function writes a header.
+ * It checks whether current position is header or not. */
+void write_page_header(const page_header_t * const header);
+
+/* Intilizing database */
+void initialize_db(void);
+
+
+  
+
+
+
+
+
+
 #endif
-
-// Default order is 4.
-#define DEFAULT_ORDER 4
-
-// Minimum order is necessarily 3.  We set the maximum
-// order arbitrarily.  You may change the maximum order.
-#define MIN_ORDER 3
-#define MAX_ORDER 20
-
-// Constants for printing part or all of the GPL license.
-#define LICENSE_FILE "LICENSE.txt"
-#define LICENSE_WARRANTEE 0
-#define LICENSE_WARRANTEE_START 592
-#define LICENSE_WARRANTEE_END 624
-#define LICENSE_CONDITIONS 1
-#define LICENSE_CONDITIONS_START 70
-#define LICENSE_CONDITIONS_END 625
-
-// TYPES.
-
-/* Type representing the record
- * to which a given key refers.
- * In a real B+ tree system, the
- * record would hold data (in a database)
- * or a file (in an operating system)
- * or some other information.
- * Users can rewrite this part of the code
- * to change the type and content
- * of the value field.
- */
-typedef struct record {
-    int value;
-} record;
-
-/* Type representing a node in the B+ tree.
- * This type is general enough to serve for both
- * the leaf and the internal node.
- * The heart of the node is the array
- * of keys and the array of corresponding
- * pointers.  The relation between keys
- * and pointers differs between leaves and
- * internal nodes.  In a leaf, the index
- * of each key equals the index of its corresponding
- * pointer, with a maximum of order - 1 key-pointer
- * pairs.  The last pointer points to the
- * leaf to the right (or NULL in the case
- * of the rightmost leaf).
- * In an internal node, the first pointer
- * refers to lower nodes with keys less than
- * the smallest key in the keys array.  Then,
- * with indices i starting at 0, the pointer
- * at i + 1 points to the subtree with keys
- * greater than or equal to the key in this
- * node at index i.
- * The num_keys field is used to keep
- * track of the number of valid keys.
- * In an internal node, the number of valid
- * pointers is always num_keys + 1.
- * In a leaf, the number of valid pointers
- * to data is always num_keys.  The
- * last leaf pointer points to the next leaf.
- */
-typedef struct node {
-    void ** pointers;
-    int * keys;
-    struct node * parent;
-    bool is_leaf;
-    int num_keys;
-    struct node * next; // Used for queue.
-} node;
-
-// GLOBALS.
-
-/* The order determines the maximum and minimum
- * number of entries (keys and pointers) in any
- * node.  Every node has at most order - 1 keys and
- * at least (roughly speaking) half that number.
- * Every leaf has as many pointers to data as keys,
- * and every internal node has one more pointer
- * to a subtree than the number of keys.
- * This global variable is initialized to the
- * default value.
- */
-int order;
-
-/* The queue is used to print the tree in
- * level order, starting from the root
- * printing each entire rank on a separate
- * line, finishing with the leaves.
- */
-node * queue;
-
-/* The user can toggle on and off the "verbose"
- * property, which causes the pointer addresses
- * to be printed out in hexadecimal notation
- * next to their corresponding keys.
- */
-bool verbose_output;
-
-
-// FUNCTION PROTOTYPES.
-
-// Output and utility.
-
-void license_notice( void );
-void print_license( int licence_part );
-void usage_1( void );
-void usage_2( void );
-void usage_3( void );
-void enqueue( node * new_node );
-node * dequeue( void );
-int height( node * root );
-int path_to_root( node * root, node * child );
-void print_leaves( node * root );
-void print_tree( node * root );
-void find_and_print(node * root, int key, bool verbose); 
-void find_and_print_range(node * root, int range1, int range2, bool verbose); 
-int find_range( node * root, int key_start, int key_end, bool verbose,
-        int returned_keys[], void * returned_pointers[]); 
-node * find_leaf( node * root, int key, bool verbose );
-record * find( node * root, int key, bool verbose );
-int cut( int length );
-
-// Insertion.
-
-record * make_record(int value);
-node * make_node( void );
-node * make_leaf( void );
-int get_left_index(node * parent, node * left);
-node * insert_into_leaf( node * leaf, int key, record * pointer );
-node * insert_into_leaf_after_splitting(node * root, node * leaf, int key,
-                                        record * pointer);
-node * insert_into_node(node * root, node * parent, 
-        int left_index, int key, node * right);
-node * insert_into_node_after_splitting(node * root, node * parent,
-                                        int left_index,
-        int key, node * right);
-node * insert_into_parent(node * root, node * left, int key, node * right);
-node * insert_into_new_root(node * left, int key, node * right);
-node * start_new_tree(int key, record * pointer);
-node * insert( node * root, int key, int value );
-
-// Deletion.
-
-int get_neighbor_index( node * n );
-node * adjust_root(node * root);
-node * coalesce_nodes(node * root, node * n, node * neighbor,
-                      int neighbor_index, int k_prime);
-node * redistribute_nodes(node * root, node * n, node * neighbor,
-                          int neighbor_index,
-        int k_prime_index, int k_prime);
-node * delete_entry( node * root, node * n, int key, void * pointer );
-node * delete( node * root, int key );
-
-void destroy_tree_nodes(node * root);
-node * destroy_tree(node * root);
-
-#endif /* __BPT_H__*/
