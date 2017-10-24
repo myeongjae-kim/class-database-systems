@@ -4,13 +4,18 @@
  *
  * This is a main file of disk-based b+tree */
 
+#include "bpt.h"
 #include <stdio.h>
 
-#include "bpt.h"
 
+// TODO: delete
+#include "bpt_header_object.h"
+extern header_object_t *header_page;
+// Delete end
 
 void print_page(uint64_t page_number);
 void print_header_page();
+
 
 int main(void)
 {
@@ -29,7 +34,9 @@ int main(void)
 
   print_page(1);
 
-  print_header_page();
+  header_page->print(header_page);
+  add_free_page();
+  header_page->print(header_page);
 
   return 0;
 }

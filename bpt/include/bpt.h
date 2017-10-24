@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -136,7 +137,26 @@ void write_page_header(const page_header_t * const header);
 void initialize_db(void);
 
 
+
+//TODO: Implement
+
+// delete page and return page to free page list.
+bool delete_page(uint64_t page_number);
   
+
+// This function returns an offset of new free page.
+// It is called when a free page list is empty.
+// At least one free page must exist always.
+void add_free_page();
+
+
+// This function returns a page number
+// Get a page from free list
+uint64_t leaf_page_alloc();
+
+// This function returns a page number
+// Get a page from free list
+uint64_t internal_page_alloc();
 
 
 

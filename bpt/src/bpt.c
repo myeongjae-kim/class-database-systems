@@ -5,15 +5,23 @@
  * This is a implementation of disk-based b+tree */
 
 #include "bpt.h"
-#include <sys/stat.h>
+
 #include <assert.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include "bpt_header_object.h"
 
 // File descriptor.
 int32_t db;
 
 // Current page offset
 // Page moving must be occurred via go_to_page function.
-off64_t current_page_start_offset = 0;
+static off64_t current_page_start_offset = 0;
+
+// header page always exists.
+header_object_t __header_object;
+header_object_t *header_page = &__header_object;
 
 void close_db(void) {
   close(db);
@@ -38,23 +46,11 @@ void go_to_page_number(const uint64_t page_number) {
   }
 }
 
-void print_header_page(void) {
-  go_to_page_number(0);
-  header_page_t page;
 
-  if (read(db, &page, sizeof(page)) < 0) {
-    perror("(print_header_page)");
-    exit(1);
-  }
-
-  printf(" ** Printing Header Page ** \n");
-
-  printf("  page.free_page_offset: %ld\n", page.free_page_offset);
-  printf("  page.root_page_offset: %ld\n", page.root_page_offset);
-  printf("  page.number_of_pages : %ld\n", page.number_of_pages);
-
-  printf(" **         End          ** \n");
+void print_header_page() {
+  header_page->print(header_page);
 }
+
 
 void print_page(const uint64_t page_number) {
   page_header_t header;
@@ -75,6 +71,9 @@ void print_page(const uint64_t page_number) {
   printf("   linked_page_offset: %ld\n",
       header.one_more_page_offset);
   printf(" **         End          ** \n");
+
+
+  //TODO: print other informations
 }
 
 // This function writes page header to db.
@@ -104,20 +103,11 @@ void initialize_db(void) {
   // Page 1 is Root page.
   // Page 2 is the start of free page.
 
-
-  header_page_t header_page;
-  header_page.root_page_offset = 1 * PAGE_SIZE;
-  header_page.free_page_offset = 2 * PAGE_SIZE;
-
   // The number of pages includes all kinds of pages.
   // '3' means header page, root page, first free page.
-  header_page.number_of_pages  = 3;
-
-  // Header page
-  if(write(db, &header_page, sizeof(header_page_t)) < 0) {
-    perror("(initialize_db)");
-    exit(1);
-  }
+  
+  // Free page offset, Root page offset, number of pages.
+  header_page->set(header_page, 2 * PAGE_SIZE, 1 * PAGE_SIZE, 3);
 
   // Go to root page
   go_to_page_number(1);
@@ -125,16 +115,113 @@ void initialize_db(void) {
   // Write header of root
   // Parent of root is root.
 
-  page_header_t header = {1 * PAGE_SIZE, 1, 0, {0}, 0};
-  write_page_header(&header);
+  // DB has at least three pages.
+  // 1. Header page
+  // 2. Leaf page
+  // 3. Free page
+
+  page_header_t page_header = {1 * PAGE_SIZE, 3, 0, {0}, 0};
+  write_page_header(&page_header);
 
   // Go to free page
   go_to_page_number(2);
   // Do nothing. Here is the end of free page.
-
 }
 
+
+// delete page and return page to free page list.
+bool delete_page(uint64_t page_number){
+
+  //TODO: Return the deleted page to free list.
+  // Reinitialize first 8 byte zero.
+  return false;
+}
+  
+
+// This function returns an offset of new free page.
+// It is called when a free page list is empty.
+// ** At least one free page must exist always **
+void add_free_page(){
+  uint64_t current_free_page = -1;
+  uint64_t next_free_page = header_page->get_free_page_offset(header_page);
+  int32_t read_bytes;
+
+  // At least one free page must exist.
+  assert(next_free_page != 0);
+
+  // Find last page
+  do {
+    current_free_page = next_free_page;
+    if (lseek64(db, current_free_page, SEEK_SET) < 0) {
+      perror("(add_free_page)");
+      assert(false);
+      exit(1);
+    }
+    // File offset is on free page
+    // Read next page offset
+
+    read_bytes = read(db, &next_free_page, sizeof(next_free_page));
+    if (read_bytes < 0) {
+      perror("(add_free_page)");
+      assert(false);
+      exit(1);
+    }
+  } while(next_free_page != 0 && read_bytes != 0);
+
+  // current_free_page is last page offset because its content is zero.
+  next_free_page = header_page->get_number_of_pages(header_page) * PAGE_SIZE;
+
+  // add next free page
+  if (write(db, &next_free_page, sizeof(next_free_page)) < 0) {
+    perror("(add_free_page)");
+    assert(false);
+    exit(1);
+  }
+
+  // increase number of pages
+  header_page->set_number_of_pages(header_page, 
+      header_page->get_number_of_pages(header_page) + 1);
+}
+
+
+// This function returns a page number
+// Get a page from free list
+uint64_t leaf_page_alloc(){
+  return 0;
+}
+
+// This function returns a page number
+// Get a page from free list
+uint64_t internal_page_alloc(){
+  return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int open_db (char *pathname){
+  // setting header page
+  header_object_constructor(header_page);
+
+
   db = open(pathname, O_RDWR | O_LARGEFILE);
   if (db < 0) {
     // Opening is failed.
@@ -145,11 +232,9 @@ int open_db (char *pathname){
     db = open(pathname, O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE);
     if (db < 0) {
       // Creating is failed.
-#ifdef DBG
       perror("(open_db) DB opening is failed.");
       fprintf(stderr, "(open_db) Terminate the program\n");
       return -1;
-#endif
     }
 
     // Change its permission.
@@ -163,6 +248,9 @@ int open_db (char *pathname){
   atexit(close_db);
 
   // TODO: Read database
+
+  // Read header
+  header_page->read(header_page);
 
 
   return 0;
@@ -185,3 +273,7 @@ int delete (int64_t key){
 
   return 0;
 }
+
+
+
+
