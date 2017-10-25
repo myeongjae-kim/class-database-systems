@@ -30,8 +30,6 @@ typedef struct __header_object {
   void (*set_number_of_pages)(struct __header_object * const,
       uint64_t number_of_pages);
 
-
-
 } header_object_t;
 
 void header_object_constructor(header_object_t * const header);

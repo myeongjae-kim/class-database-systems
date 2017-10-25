@@ -34,9 +34,24 @@ int main(void)
 
   print_page(1);
 
-  header_page->print(header_page);
-  add_free_page();
-  header_page->print(header_page);
+  uint64_t added_page_one;
+  printf("Leaf Page is allocated. Number: %ld\n",
+      added_page_one = leaf_page_alloc(1, 1));
+  
+  print_page(added_page_one);
+
+  uint64_t added_page_two;
+  printf("Internal Page is allocated. Number: %ld\n",
+      added_page_two = internal_page_alloc(1, 1));
+  
+  print_page(added_page_two);
+
+  delete_page(added_page_one);
+  delete_page(added_page_two);
+
+
+
+  print_header_page();
 
   return 0;
 }

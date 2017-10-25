@@ -31,7 +31,11 @@
 #define HEADER_DUMMY_SIZE (120 - (8 + 4 + 4))
 // The size of page_header_t is 128 byte.
 typedef struct __page_header {
+  // This can be ued as:
+  //  1. Next free page offset (in free page)
+  //  2. Parent page offset (in leaf or internal page)
   uint64_t linked_page_offset;
+  
   uint32_t is_leaf;
   uint32_t number_of_keys;
   const char dummy[HEADER_DUMMY_SIZE];
@@ -141,7 +145,7 @@ void initialize_db(void);
 //TODO: Implement
 
 // delete page and return page to free page list.
-bool delete_page(uint64_t page_number);
+bool delete_page(const uint64_t page_number);
   
 
 // This function returns an offset of new free page.
@@ -152,13 +156,25 @@ void add_free_page();
 
 // This function returns a page number
 // Get a page from free list
-uint64_t leaf_page_alloc();
+// Returned page will be clean.
+uint64_t page_alloc();
+
 
 // This function returns a page number
 // Get a page from free list
-uint64_t internal_page_alloc();
+uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
+    const uint32_t is_leaf, const uint64_t one_more_page_number);
 
 
+// This function returns a page number
+// Get a page from free list
+uint64_t leaf_page_alloc(const uint64_t parent_page_number,
+    const uint64_t right_sibling_page_number);
+
+// This function returns a page number
+// Get a page from free list
+uint64_t internal_page_alloc(const uint64_t parent_page_number,
+    const uint64_t one_more_page_number);
 
 
 
