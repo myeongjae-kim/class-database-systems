@@ -40,7 +40,7 @@ typedef struct __page_header {
   
   uint32_t is_leaf;
   uint32_t number_of_keys;
-  const char dummy[HEADER_DUMMY_SIZE];
+  char dummy[HEADER_DUMMY_SIZE];
 
   // This can be used as:
   //   1. Right Sibling Page Offset (Leaf Page)
@@ -58,7 +58,7 @@ typedef struct __record {
 
 // This type is used in internal page
 typedef struct __internal_page_element {
-  uint64_t key;
+  int64_t key;
   uint64_t page_offset;
 } internal_page_element_t;
 

@@ -14,6 +14,7 @@
 #include <sys/types.h>
 
 #include "bpt_header_object.h"
+#include "bpt_page_object.h"
 
 // File descriptor.
 int32_t db;
@@ -479,14 +480,57 @@ void make_free_page_list_compact() {
 }
 
 
+/*       Functions related with Insert()         */
+
+// TODO: Not yet debugged.
+// This function finds the leaf page that a key will be stored.
+uint64_t find_leaf_page(const int key) {
+  uint32_t i = 0;
+  uint8_t page_buffer[PAGE_SIZE];
+  memset(page_buffer, 0, PAGE_SIZE);
+
+  // Get root page
+  go_to_page_number(
+      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+
+  if (read(db, page_buffer, PAGE_SIZE) < 0) {
+    perror("(find_leaf_page)");
+    assert(false);
+    exit(1);
+  }
+
+  // page object is needed.
+  page_object_t page;
+  page_object_constructor(&page);
+  page.set_current_page_number(&page, 
+      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+  page.read(&page);
+
+  // Leaf is not found. Go to found leaf
+  while(page.get_type(&page) != LEAF_PAGE) {
+    assert(page.get_type(&page) != INVALID_PAGE);
+
+    // Internal page is found
+    i = 0;
+    while(i < page.get_number_of_keys(&page)) {
+      if (key >= page.get_key_and_offset(&page, i)->key) {
+        i++;
+      } else {
+       break;
+      }
+    }
+    // Next page is found. Go to next page
+    page.set_current_page_number(&page, 
+        page.get_key_and_offset(&page, i)->page_offset / PAGE_SIZE);
+    page.read(&page);
+  }
 
 
+  return page.get_current_page_number(&page);
+}
 
 
-
-
-
-
+/*     Functions related with Insert() End       */
 
 
 
@@ -530,6 +574,40 @@ int open_db (char *pathname){
 
 
 int insert (int64_t key, char *value){
+  uint64_t leaf_page;
+  page_object_t page;
+  page_object_constructor(&page);
+#ifdef DBG
+  printf("(insert) Start insert. key: %ld, value: %s\n", key, value);
+#endif
+
+  /** If same value is exist, do nothing */
+  // TODO: Implement find
+
+
+  /** Create a new rcord */
+  record_t record;
+  record.key = key;
+  strncpy(record.value, value, sizeof(record.value));
+
+
+  /** Find a leaf page to insert the value */
+  leaf_page = find_leaf_page(key);
+
+
+  /** If leaf has room for record, insert */
+  page.set_current_page_number(&page, leaf_page);
+  page.read(&page);
+  assert(page.get_type(&page) == LEAF_PAGE);
+  if (page.insert_record(&page, &record)) {
+    // insertion is successful.
+    return 0;
+  }
+
+  /** If leaf has no room for record, split and insert */
+  // TODO
+  fprintf(stderr, "(insert) Not yet implemented\n");
+  assert(false);
 
   return 0;
 }

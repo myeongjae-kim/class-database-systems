@@ -15,6 +15,7 @@
 
 // TODO: delete
 #include "bpt_header_object.h"
+#include "bpt_page_object.h"
 extern header_object_t *header_page;
 extern int32_t db;
 // Delete end
@@ -38,6 +39,10 @@ void parameter_check(void) {
 
   printf("iternal_page_size: %ld\n", sizeof(internal_page_t));
   assert(sizeof(internal_page_t) == 4096);
+
+  printf("page_t size: %ld\n", sizeof(page_t));
+  assert(sizeof(page_t) == 4096);
+
 
   printf("(parameter_check) parameter checking is successful.\n");
 }
@@ -64,8 +69,10 @@ enum command_case decode_command(char* command) {
 
 int main(void)
 {
-  char __command_input[256];
-  char* command_input = __command_input;
+  char command_input[256];
+  char* input_iterator;
+  int64_t key;
+  uint32_t i;
 
   if (open_db("database") != 0) {
     printf("(main) DB Opening is failed.\n");  
@@ -75,115 +82,134 @@ int main(void)
 #ifdef DBG
   parameter_check();
 #endif
-  print_page(1);
-  print_header_page();
-  add_free_page();
-  add_free_page();
-  add_free_page();
-  print_header_page();
-
-  print_page(1);
-
 
   printf("> ");
   while(fgets(command_input, sizeof(command_input), stdin) != NULL){
+    input_iterator = command_input;
+    key = 0;
 
-    if (*command_input == '\n') {
+    if (*input_iterator == '\n') {
       continue;
     }
 
-    switch ( decode_command(command_input) ) {
+    // Remove linebreak
+    input_iterator = strtok(input_iterator, "\n");
+
+    switch ( decode_command(input_iterator) ) {
       case OPEN:
-        printf("Open\n");
-        command_input += strlen(commands[OPEN]);
-        if (*command_input != ' ') {
-          printf("(open) Invalid argument\n");
+        input_iterator += strlen(commands[OPEN]);
+        if (*input_iterator != ' ') {
+          printf("(open) Argument is invalid.\n");
+          printf("(open) Usage > open <pathname>\n");
           break;
         }
+        // Skip space bar
+        input_iterator++;
 
-        printf("%s\n", command_input);
+#ifdef DBG
+        printf("pathname: %s\n", input_iterator);
+#endif
+        // call open_db();
 
         break;
       case INSERT:
-        printf("Insert\n");
-        command_input += strlen(commands[INSERT]);
-        if (*command_input != ' ') {
-          printf("(insert) Invalid argument\n");
+        input_iterator += strlen(commands[INSERT]);
+        if (*input_iterator != ' ') {
+          printf("(insert) Argument is invalid.\n");
+          printf("(insert) Usage > insert <key> <value>\n");
+          break;
+        }
+        // Skip space bar
+        input_iterator++;
+
+        // Parse 
+        for (i = 0; i < sizeof(command_input); ++i) {
+          if (input_iterator[i] == ' ') {
+            break;
+          }
+        }
+        input_iterator[i] = '\0';
+        key = atol(input_iterator);
+        input_iterator += i + 1;
+        
+        // Parsed input check
+        if (key == 0) {
+          printf("(insert) key conversion to integer is failed.\n");
+          printf("(insert) Usage > insert <key> <value>\n");
+          break;
+        } else if (input_iterator == NULL) {
+          printf("(insert) <value> does not exist.\n");
+          printf("(insert) Usage > insert <key> <value>\n");
           break;
         }
 
-        printf("%s\n", command_input);
+
+#ifdef DBG
+        printf("key: %ld, value: %s\n", key, input_iterator);
+#endif
+        insert(key, input_iterator);
 
         break;
       case FIND:
-        printf("Find\n");
-        command_input += strlen(commands[FIND]);
-        if (*command_input != ' ') {
-          printf("(find) Invalid argument\n");
+        input_iterator += strlen(commands[FIND]);
+        if (*input_iterator != ' ') {
+          printf("(find) Argument is invalid.\n");
+          printf("(find) Usage > find <key>\n");
+          break;
+        }
+        // Skip space bar
+        input_iterator++;
+
+        if ((key = atol(input_iterator)) == 0) {
+          printf("(find) key conversion to integer is failed.\n");
+          printf("(find) Usage > find <key>\n");
           break;
         }
 
-        printf("%s\n", command_input);
+#ifdef DBG
+        printf("key: %ld\n", key);
+#endif
+        // call find(key);
 
         break;
       case DELETE:
-        printf("Delete\n");
-        command_input += strlen(commands[DELETE]);
-        if (*command_input != ' ') {
-          printf("(delete) Invalid argument\n");
+        input_iterator += strlen(commands[DELETE]);
+        if (*input_iterator != ' ') {
+          printf("(delete) Argument is invalid.\n");
+          printf("(delete) Usage > delete <key>\n");
           break;
         }
-        printf("%s\n", command_input);
+        // Skip space bar
+        input_iterator++;
+
+
+        if ((key = atol(input_iterator)) == 0) {
+          printf("(delete) key conversion to integer is failed.\n");
+          printf("(delete) Usage > delete <key>\n");
+          break;
+        }
+
+#ifdef DBG
+        printf("key: %ld\n", key);
+#endif
+        // call delete(key);
 
         break;
 
       case INVALID:
-        printf("Invalid\n");
-        break;
-
       default:
-        printf("Default\n");
+        printf(" Invalid command is inputted\n");
+        printf(" Usage:\n");
+        printf("  > open <pathname>\n");
+        printf("  > insert <key> <value>\n");
+        printf("  > find <key>\n");
+        printf("  > delete <key>\n");
         break;
     }
 
 
     printf("> ");
   };
-
-
-
-  /**   while ((instruction = getchar()) != EOF) {
-   *     // When a user just push enter
-   *     if (instruction == '\n') {
-   *       printf("> ");
-   *       continue;
-   *     }
-   *
-   *     must_be_space_bar = getchar();
-   *     if (must_be_space_bar == ' ') {
-   *       // Read the value
-   *       scanf("%[^\n]", value_buffer);
-   *
-   *       switch (instruction) {
-   *         case 'i':
-   *           printf("[i]:\n%s\n", value_buffer);
-   *           break;
-   *         case 'f':
-   *         case 'p':
-   *           printf("[p]:\n%s\n", value_buffer);
-   *           break;
-   *         default:
-   *           printf("Input right command.\n");
-   *           break;
-   *       }
-   *     } else {
-   *       printf("More than two character command not exists\n");
-   *     }
-   *
-   *     while (must_be_space_bar != '\n' && getchar() != (int)'\n');
-   *     printf("> ");
-   *   } */
-  printf("\n");
 
   return 0;
 }
