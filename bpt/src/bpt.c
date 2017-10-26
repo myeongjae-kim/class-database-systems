@@ -1,12 +1,14 @@
-/* File Name : bpt.c
- * Author    : Kim, Myeong Jae
+/* File Name : bpt.c Author    : Kim, Myeong Jae
  * Due Date  : 2017-11-5
  *
  * This is a implementation of disk-based b+tree */
 
 #include "bpt.h"
 
+#ifdef DBG
 #include <assert.h>
+#endif
+
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -124,12 +126,12 @@ void initialize_db(void) {
   // 2. Leaf page
   // 3. Free page
 
-  page_header_t page_header = {1 * PAGE_SIZE, 3, 0, {0}, 0};
+  page_header_t page_header = {1 * PAGE_SIZE, 1, 0, {0}, 0};
   write_page_header(&page_header);
 
   // Go to free page
   go_to_page_number(2);
-  // Do nothing. Here is the end of free page.
+  // Do nothing. Here is the head and tail of free page list.
 }
 
 void clear_page(const uint64_t page_number) {
@@ -146,7 +148,7 @@ void clear_page(const uint64_t page_number) {
 // Deleted page will be the head of free page list.
 bool delete_page(const uint64_t page_number){
 
-  //TODO: Return the deleted page to free list.
+  // Return the deleted page to free list.
   // Reinitialize first 8 byte zero.
   // Deleted page will be head of free list.
   if (page_number <= 1) {
@@ -189,6 +191,7 @@ bigger than last page number.\n");
   
 
 // It is called when a free page list is empty.
+// Pages are added to tail of the list.
 // ** At least one free page must exist always **
 void add_free_page(){
   const int8_t N_OF_ADDED_PAGE = 10;
@@ -243,8 +246,8 @@ void add_free_page(){
 
 
 #ifdef DBG
-  printf("(add_free_page) Ten free page is added: Page Number %ld\n",
-      header_page->get_number_of_pages(header_page));
+  printf("(add_free_page) Ten free page is added: Last page Number %ld\n",
+      header_page->get_number_of_pages(header_page) - 1);
 #endif
 
 }
@@ -349,6 +352,131 @@ uint64_t internal_page_alloc(const uint64_t parent_page_number,
 }
 
 
+// This function check whether the page is free page of not
+bool is_free_page_except_last_one(const uint64_t page_number) {
+  if (page_number < 2) {
+#ifdef DBG
+    fprintf(stderr, "(is_free_page_except_last_one) reserved pages. \
+Header or Root page.\n");
+#endif
+    return false;
+  }
+
+  // In a normal situation, leaf or internal page must get a content.
+  // If a content is whole zero, it is leaf page.
+
+  go_to_page_number(page_number);
+
+  // clear page_buffer
+  uint8_t page_buffer[PAGE_SIZE];
+  memset(page_buffer, 0, PAGE_SIZE);
+
+  if (read(db, page_buffer, PAGE_SIZE) < 0) {
+    perror("(is_free_page_except_last_one)");
+    assert(false);
+    exit(1);
+  }
+
+  const uint8_t next_free_page_offset_size = sizeof(uint64_t);
+  uint64_t next_free_page_offset;
+
+  // Read first eight byte.
+  memcpy(&next_free_page_offset,
+      page_buffer,
+      next_free_page_offset_size);
+
+  if (next_free_page_offset == 0) {
+#ifdef DBG
+    printf("(is_free_page_except_last_one) Page #%ld is \
+the last free page or not allocated page.\n", page_number);
+#endif
+    return false;
+  } else if (memcmp(&page_buffer[next_free_page_offset_size],
+        &empty_page_dummy[next_free_page_offset_size],
+        PAGE_SIZE - next_free_page_offset_size) == 0) {
+    // It is free page.
+#ifdef DBG
+    printf("(is_free_page_except_last_one) Page #%ld is \
+a free page.\n", page_number);
+#endif
+    return true;
+  }
+
+  // Page exists but not a free page.
+  return false;
+}
+
+
+// This function removes free pages which are in the end of file.
+// By removing free pages, DB size will be shrinked.
+void make_free_page_list_compact() {
+#ifdef DBG
+  printf("(make_free_page_list_compact) I am called!\n");
+#endif
+
+  // Find the start of last free pages
+  // Generally, free pages are in the end of file.
+  // Below page number indicates where the start of last free pages.
+
+  uint64_t number_of_pages = header_page->get_number_of_pages(header_page);
+
+  // db at least three pages.
+  // Header page, Root page, Free page.
+  assert(number_of_pages >= 3);
+
+  // i is the last page
+  uint64_t reverse_free_page_iterator = number_of_pages - 1;
+
+  // last free page had no value
+#ifdef DBG
+  uint8_t page_buffer[PAGE_SIZE];
+  memset(page_buffer, 0, PAGE_SIZE);
+  go_to_page_number(reverse_free_page_iterator);
+  if (read(db, page_buffer, PAGE_SIZE) < 0) {
+    perror("make_free_page_list_compact()");
+    assert(false);
+    exit(1);
+  }
+  assert(memcmp(page_buffer, empty_page_dummy, PAGE_SIZE) == 0);
+#endif
+
+  // Below '2' means the minimum page number of free page
+  while (reverse_free_page_iterator > 2) {
+    // The reason for decreasing iterator first is that
+    // we already know current reverse_free_page_iterator is pointing
+    // a free page which is last.
+    //
+    // If a last free page number is inserted to is_free_page_except_last_one,
+    // it will return false.
+    reverse_free_page_iterator--;
+    if ( ! is_free_page_except_last_one(reverse_free_page_iterator)) {
+      break;
+    }
+  }
+
+  uint64_t start_of_last_free_pages = reverse_free_page_iterator;
+
+  // Fill zero to the start page of last free pages
+  // It will be last page of free pages.
+  go_to_page_number(start_of_last_free_pages);
+  if (write(db, empty_page_dummy, PAGE_SIZE) < 0) {
+    perror("make_free_page_list_compact()");
+    assert(false);
+    exit(1);
+  }
+
+  //  Truncate file
+  //  Below function removes last free page from the DB,
+  // yet it is okay because last free page does not have any value.
+  if (ftruncate64(db, PAGE_SIZE * (start_of_last_free_pages)) < 0) {
+    perror("make_free_page_list_compact()");
+    assert(false);
+    exit(1);
+  }
+
+  // Make number_of_pages correct.
+  header_page->set_number_of_pages(header_page, start_of_last_free_pages + 1);
+}
 
 
 
@@ -392,12 +520,10 @@ int open_db (char *pathname){
 
   // Register file closing function to prevent memory leakage.
   atexit(close_db);
-
-  // TODO: Read database
+  atexit(make_free_page_list_compact);
 
   // Read header
   header_page->read(header_page);
-
 
   return 0;
 }

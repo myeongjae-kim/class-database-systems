@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "bpt_header_object.h"
+
 #define DBG
 
 #define PAGE_SIZE 4096
@@ -63,12 +65,6 @@ typedef struct __internal_page_element {
 
 /****** Pages ******/
 
-// It is a structure of header page.
-typedef struct __header_page {
-  uint64_t free_page_offset;
-  uint64_t root_page_offset;
-  uint64_t number_of_pages;
-} header_page_t;
 
 #define RECORD_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
     / sizeof(record_t))
@@ -125,7 +121,7 @@ void close_db(void);
 uint64_t get_current_page_number(void);
 
 /* This function moves file offset to target page */
-void go_to_page(const uint64_t page_number);
+void go_to_page_number(const uint64_t page_number);
 
 /* This function prints haeder page */
 void print_header_page(void);
@@ -154,6 +150,10 @@ bool delete_page(const uint64_t page_number);
 void add_free_page();
 
 
+// return true if it is free page
+bool is_free_page_except_last_one(const uint64_t page_number);
+
+
 // This function returns a page number
 // Get a page from free list
 // Returned page will be clean.
@@ -177,6 +177,7 @@ uint64_t internal_page_alloc(const uint64_t parent_page_number,
     const uint64_t one_more_page_number);
 
 
+void make_free_page_list_compact();
 
 
 #endif

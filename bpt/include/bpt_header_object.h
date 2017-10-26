@@ -1,7 +1,14 @@
 #ifndef __BPT_HEADER_OBJECT_H__
 #define __BPT_HEADER_OBJECT_H__
 
-#include "bpt.h"
+// It is a structure of header page.
+typedef struct __header_page {
+  uint64_t free_page_offset;
+  uint64_t root_page_offset;
+  uint64_t number_of_pages;
+} header_page_t;
+
+
 // Realtime synchronize with db.
 typedef struct __header_object {
   struct __header_object *this;
