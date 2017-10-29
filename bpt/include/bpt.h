@@ -140,26 +140,6 @@ void initialize_db(void);
 
 //TODO: Implement
 
-// delete page and return page to free page list.
-bool delete_page(const uint64_t page_number);
-  
-
-// This function returns an offset of new free page.
-// It is called when a free page list is empty.
-// At least one free page must exist always.
-void add_free_page();
-
-
-// return true if it is free page
-bool is_free_page_except_last_one(const uint64_t page_number);
-
-
-// This function returns a page number
-// Get a page from free list
-// Returned page will be clean.
-uint64_t page_alloc();
-
-
 // This function returns a page number
 // Get a page from free list
 uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
@@ -175,9 +155,6 @@ uint64_t leaf_page_alloc(const uint64_t parent_page_number,
 // Get a page from free list
 uint64_t internal_page_alloc(const uint64_t parent_page_number,
     const uint64_t one_more_page_number);
-
-
-void make_free_page_list_compact();
 
 
 #endif

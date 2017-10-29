@@ -16,6 +16,7 @@
 // TODO: delete
 #include "bpt_header_object.h"
 #include "bpt_page_object.h"
+#include "bpt_free_page_manager.h"
 extern header_object_t *header_page;
 extern int32_t db;
 // Delete end
@@ -74,6 +75,8 @@ int main(void)
   int64_t key;
   uint32_t i;
 
+  uint64_t temp_pages[20];
+
   if (open_db("database") != 0) {
     printf("(main) DB Opening is failed.\n");  
     exit(1);
@@ -82,6 +85,24 @@ int main(void)
 #ifdef DBG
   parameter_check();
 #endif
+
+  for (i = 0; i < 10; ++i) {
+    temp_pages[i] = page_alloc();
+  }
+  temp_pages[10] = page_alloc();
+  print_header_page();
+
+  
+  free_page_clean();
+
+  for (i = 0; i < 11; ++i) {
+    if(page_free(temp_pages[i]) == false) {
+      assert(false);
+    }
+  }
+
+  free_page_clean();
+
 
   printf("> ");
   while(fgets(command_input, sizeof(command_input), stdin) != NULL){

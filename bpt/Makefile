@@ -31,6 +31,8 @@ $(TARGET): $(TARGET_SRC) $(SRCS_FOR_LIB)
 		-c $(SRCDIR)bpt_header_object.c
 	$(CC) $(CFLAGS) -o $(SRCDIR)bpt_page_object.o\
 		-c $(SRCDIR)bpt_page_object.c
+	$(CC) $(CFLAGS) -o $(SRCDIR)bpt_free_page_manager.o\
+		-c $(SRCDIR)bpt_free_page_manager.c
 	# $(CC) $(CFLAGS) -o $(OBJS_FOR_LIB) -c $(SRCS_FOR_LIB)
 	make static_library
 	$(CC) $(CFLAGS) -o $@ $^ -L $(LIBS) -lbpt
