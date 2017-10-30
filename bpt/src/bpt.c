@@ -32,6 +32,7 @@ header_object_t *header_page = &__header_object;
 const uint8_t empty_page_dummy[PAGE_SIZE] = {0};
 
 void clear_resource(void) {
+  free_page_clean();
   close(db);
   /** make_free_page_list_compact(); */
 }

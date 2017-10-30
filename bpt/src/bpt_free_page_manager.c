@@ -312,7 +312,8 @@ uint64_t page_alloc(){
 
   if (__current_capacity == 1) {
     // add new free page
-    __add(10);
+    /** __add(10); */
+    __add(header_page->get_number_of_pages(header_page));
   }
 
   go_to_page_number(__head_page_number);

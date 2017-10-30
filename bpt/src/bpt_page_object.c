@@ -280,7 +280,8 @@ bool __insert_into_node(struct __page_object * const node,
   // Precondition: Node is not full.
   assert(node->get_number_of_keys(node) < OFFSETS_PER_PAGE);
 
-  for (i = node->get_number_of_keys(node); i > left_index; --i) {
+  //TODO
+  for (i = node->get_number_of_keys(node) - 1; i > left_index; --i) {
     node->page.content.key_and_offsets[i + 1].key = 
       node->page.content.key_and_offsets[i].key;
 
@@ -324,7 +325,100 @@ int64_t __get_left_index(const struct __page_object* const parent,
 }
 
 
+bool __insert_into_parent(
+    struct __page_object * const left, uint64_t key,
+    struct __page_object * const right);
 
+bool __insert_into_node_after_splitting(struct __page_object * const old_node,
+    int64_t left_index, uint64_t key, struct __page_object * const right){
+  // We do not need to care the one_more_page_offset in header
+  int64_t i, j;
+
+  // Make temporary record array whose size is RECORD_ORDER
+  internal_page_element_t *temp_key_and_offsets =
+    (internal_page_element_t*)calloc(
+        OFFSET_ORDER, sizeof(*temp_key_and_offsets));
+
+  if (temp_key_and_offsets == NULL) {
+    perror("(__insert_into_node_after_splitting)");
+    exit(1);
+  }
+
+  for (i = 0, j = 0; i < old_node->get_number_of_keys(old_node);
+      ++i, ++j) {
+    if (j == left_index + 1) {
+      j++;
+    }
+    memcpy(&temp_key_and_offsets[j],
+        &old_node->page.content.key_and_offsets[i],
+        sizeof(temp_key_and_offsets[j]));
+  }
+
+  temp_key_and_offsets[left_index + 1].page_offset =
+    right->get_current_page_number(right) * PAGE_SIZE;
+  
+  temp_key_and_offsets[left_index + 1].key = key;
+
+
+    /* Create the new node and copy
+     * half the keys and pointers to the
+     * old and half to the new.
+     */  
+
+
+  int64_t split = cut(OFFSET_ORDER - 1);
+
+  uint64_t new_page_number = page_alloc();
+  struct __page_object new_node;
+  page_object_constructor(&new_node);
+
+  new_node.set_current_page_number(&new_node, new_page_number);
+  new_node.set_type(&new_node, INTERNAL_PAGE);
+
+  // clear old node
+
+  memset(old_node->page.content.records, 0,
+      sizeof(old_node->page.content.records));
+  old_node->set_number_of_keys(old_node, 0);
+
+  for (i = 0; i < split; ++i) {
+    memcpy(&old_node->page.content.key_and_offsets[i],
+        &temp_key_and_offsets[i],
+        sizeof(old_node->page.content.key_and_offsets[i]));
+    old_node->page.header.number_of_keys++;
+  }
+  uint64_t k_prime = temp_key_and_offsets[split].key;
+
+  for (i = split, j = 0; i < (int64_t)OFFSET_ORDER; ++i, ++j) {
+    memcpy(&new_node.page.content.key_and_offsets[j],
+        &temp_key_and_offsets[i],
+        sizeof(old_node->page.content.key_and_offsets[i]));
+    new_node.page.header.number_of_keys++;
+  }
+
+  free(temp_key_and_offsets);
+  new_node.page.header.linked_page_offset = 
+    old_node->page.header.linked_page_offset;
+
+  struct __page_object child;
+  page_object_constructor(&child);
+
+  for (i = 0; i < new_node.page.header.number_of_keys; ++i) {
+    child.set_current_page_number(&child,
+        new_node.page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
+    child.read(&child);
+
+    child.page.header.linked_page_offset =
+      new_node.current_page_number * PAGE_SIZE;
+    child.write(&child);
+  }
+
+  // Do not forget to write pages.
+  old_node->write(old_node);
+  new_node.write(&new_node);
+
+  return __insert_into_parent(old_node, k_prime, right);
+}
 
 bool __insert_into_parent(
     struct __page_object * const left, uint64_t key,
@@ -369,10 +463,8 @@ bool __insert_into_parent(
    * to preserve the B+ tree properties.
    */
 
-  //TODO:
-  assert(false);
-
-  /** return __insert_into_node_after_splitting(); */
+  return __insert_into_node_after_splitting(
+      &parent, left_index, key, right);
 }
 
 
