@@ -27,6 +27,7 @@ static bool __page_read(struct __page_object * const this){
   }
 
   go_to_page_number(this->current_page_number);
+  memset(&this->page, 0, PAGE_SIZE);
   if (read(db, &this->page, PAGE_SIZE) < 0) {
     perror("(page_object_t->read)");
     assert(false);
@@ -329,6 +330,7 @@ bool __insert_into_parent(
     struct __page_object * const left, uint64_t key,
     struct __page_object * const right);
 
+//TODO: Definitely here is the problem place.
 bool __insert_into_node_after_splitting(struct __page_object * const old_node,
     int64_t left_index, uint64_t key, struct __page_object * const right){
   // We do not need to care the one_more_page_offset in header
@@ -366,7 +368,8 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
      */  
 
 
-  int64_t split = cut(OFFSET_ORDER - 1);
+  //TODO
+  int64_t split = cut(OFFSET_ORDER);
 
   uint64_t new_page_number = page_alloc();
   struct __page_object new_node;
@@ -381,15 +384,19 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
       sizeof(old_node->page.content.records));
   old_node->set_number_of_keys(old_node, 0);
 
-  for (i = 0; i < split; ++i) {
+  for (i = 0; i < split - 1; ++i) {
     memcpy(&old_node->page.content.key_and_offsets[i],
         &temp_key_and_offsets[i],
         sizeof(old_node->page.content.key_and_offsets[i]));
     old_node->page.header.number_of_keys++;
   }
-  uint64_t k_prime = temp_key_and_offsets[split].key;
 
-  for (i = split, j = 0; i < (int64_t)OFFSET_ORDER; ++i, ++j) {
+  new_node.page.header.one_more_page_offset =
+    temp_key_and_offsets[i].page_offset;
+
+  uint64_t k_prime = temp_key_and_offsets[split - 1].key;
+
+  for (++i, j = 0; i < (int64_t)OFFSET_ORDER; ++i, ++j) {
     memcpy(&new_node.page.content.key_and_offsets[j],
         &temp_key_and_offsets[i],
         sizeof(old_node->page.content.key_and_offsets[i]));
@@ -403,6 +410,15 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
   struct __page_object child;
   page_object_constructor(&child);
 
+  // Leftmost page
+  child.set_current_page_number(&child,
+      new_node.page.header.one_more_page_offset / PAGE_SIZE);
+  child.read(&child);
+  child.page.header.linked_page_offset =
+    new_node.current_page_number * PAGE_SIZE;
+  child.write(&child);
+
+  // The others
   for (i = 0; i < new_node.page.header.number_of_keys; ++i) {
     child.set_current_page_number(&child,
         new_node.page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
@@ -417,7 +433,7 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
   old_node->write(old_node);
   new_node.write(&new_node);
 
-  return __insert_into_parent(old_node, k_prime, right);
+  return __insert_into_parent(old_node, k_prime, &new_node);
 }
 
 bool __insert_into_parent(
@@ -444,7 +460,7 @@ bool __insert_into_parent(
 
   struct __page_object parent;
   page_object_constructor(&parent);
-  
+
   parent.set_current_page_number(&parent, parent_offset / PAGE_SIZE);
   parent.read(&parent);
   assert(parent.get_type(&parent) == INTERNAL_PAGE);
@@ -452,7 +468,7 @@ bool __insert_into_parent(
   left_index = __get_left_index(&parent, left);
 
   /* Simple case: the new key fits into the node.
-   */
+  */
 
   if (parent.get_number_of_keys(&parent) < OFFSET_ORDER - 1) {
     return __insert_into_node(&parent, left_index, key, right);
@@ -475,17 +491,17 @@ bool __insert_record_after_splitting(struct __page_object * const this,
 
   if (this->type != LEAF_PAGE) {
     printf("(page_object_t->insert_record)\
- You've called wrong function.\n");
+        You've called wrong function.\n");
     printf("(page_object_t->insert_record)\
- This page is not a leaf page.\n");
+        This page is not a leaf page.\n");
     printf("(page_object_t->insert_record)\
- Call insert_key_and_offset_after_splitting() method\n");
+        Call insert_key_and_offset_after_splitting() method\n");
     return false;
   }
 
   //TODO: Implementing
   struct __page_object * const leaf = this;
-  
+
 
 
   // Pseudo code
@@ -601,43 +617,43 @@ bool __insert_record_after_splitting(struct __page_object * const this,
 
 
 /** bool __insert_key_and_offset(struct __page_object * const this,
-  *     const internal_page_element_t * const key_and_offset){
-  *   if (this->type != INTERNAL_PAGE) {
-  *     printf("(page_object_t->insert_key_and_offset)\
-  *         You've called wrong function.\n");
-  *     printf("(page_object_t->insert_key_and_offset)\
-  *         This page is not an internal page.\n");
-  *     printf("(page_object_t->insert_key_and_offset)\
-  *         Call set_record() method\n");
-  *     return false;
-  *   }
-  *
-  *   // Check whether it has room to insert
-  *   if ( ! this->has_room(this) ) {
-  *     return false;
-  *   }
-  *
-  *   // Insert.
-  *   uint64_t i, insertion_point = 0;
-  *   // find the place to be inserted
-  *   while (insertion_point < this->page.header.number_of_keys
-  *       && this->page.content.key_and_offsets[insertion_point].key
-  *       < key_and_offset->key)
-  *     insertion_point++;
-  *
-  *   for (i = this->page.header.number_of_keys;
-  *       i > insertion_point;
-  *       i--) {
-  *     memcpy(&this->page.content.key_and_offsets[i],
-  *         &this->page.content.key_and_offsets[i-1], sizeof(*key_and_offset));
-  *   }
-  *
-  *   memcpy(&this->page.content.key_and_offsets[insertion_point],
-  *       key_and_offset, sizeof(*key_and_offset));
-  *   this->page.header.number_of_keys++;
-  *   this->write(this);
-  *   return true;
-  * } */
+ *     const internal_page_element_t * const key_and_offset){
+ *   if (this->type != INTERNAL_PAGE) {
+ *     printf("(page_object_t->insert_key_and_offset)\
+ *         You've called wrong function.\n");
+ *     printf("(page_object_t->insert_key_and_offset)\
+ *         This page is not an internal page.\n");
+ *     printf("(page_object_t->insert_key_and_offset)\
+ *         Call set_record() method\n");
+ *     return false;
+ *   }
+ *
+ *   // Check whether it has room to insert
+ *   if ( ! this->has_room(this) ) {
+ *     return false;
+ *   }
+ *
+ *   // Insert.
+ *   uint64_t i, insertion_point = 0;
+ *   // find the place to be inserted
+ *   while (insertion_point < this->page.header.number_of_keys
+ *       && this->page.content.key_and_offsets[insertion_point].key
+ *       < key_and_offset->key)
+ *     insertion_point++;
+ *
+ *   for (i = this->page.header.number_of_keys;
+ *       i > insertion_point;
+ *       i--) {
+ *     memcpy(&this->page.content.key_and_offsets[i],
+ *         &this->page.content.key_and_offsets[i-1], sizeof(*key_and_offset));
+ *   }
+ *
+ *   memcpy(&this->page.content.key_and_offsets[insertion_point],
+ *       key_and_offset, sizeof(*key_and_offset));
+ *   this->page.header.number_of_keys++;
+ *   this->write(this);
+ *   return true;
+ * } */
 
 
 void page_object_constructor(page_object_t * const this) {

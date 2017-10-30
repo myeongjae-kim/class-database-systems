@@ -24,7 +24,7 @@ extern header_object_t *header_page;
 static bool __is_free_page(const uint64_t page_number) {
   if (page_number < 2) {
 #ifdef DBG
-    fprintf(stderr, "(is_free_page_except_last_one) reserved pages.");
+    fprintf(stderr, "(__is_free_page) reserved pages.");
     fprintf(stderr, "Header or Dummy page.\n");
 #endif
     return false;
@@ -55,7 +55,7 @@ static bool __is_free_page(const uint64_t page_number) {
 
   if (*next_free_page_offset == 0) {
 #ifdef DBG
-    fprintf(stderr, "(is_free_page_except_last_one)");
+    fprintf(stderr, "(__is_free_page)");
     fprintf(stderr, " Page #%ld is not a free page.\n", page_number);
 #endif
     return false;
@@ -64,7 +64,7 @@ static bool __is_free_page(const uint64_t page_number) {
         PAGE_SIZE - sizeof(uint64_t)) == 0) {
     // It is free page.
 #ifdef DBG
-    printf("(is_free_page_except_last_one) Page #%ld is a free page.\n",
+    printf("(__is_free_page) Page #%ld is a free page.\n",
         page_number);
 #endif
     return true;

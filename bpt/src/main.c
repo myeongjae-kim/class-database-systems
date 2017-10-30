@@ -49,10 +49,25 @@ void parameter_check(void) {
 }
 #endif
 
-enum command_case {INVALID, OPEN, INSERT, FIND, DELETE};
+void testing(void) {
+  printf("(testing)\n");
+  char* ptr;
 
-#define COMMAND_CASE_NUM 5
-char* commands[] = {"", "open", "insert", "find", "delete"};
+  int32_t i;
+  for (i = 1; i <= 100000; ++i) {
+    if ((ptr = find(i)) == NULL) {
+      fprintf(stderr, "key %d is not found\n", i);
+      exit(1);
+    }
+    printf("%s\n", ptr);
+  }
+
+}
+
+enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST};
+
+#define COMMAND_CASE_NUM 6
+char* commands[] = {"", "open", "insert", "find", "delete", "test"};
 
 enum command_case decode_command(char* command) {
   enum command_case return_case;
@@ -71,11 +86,9 @@ enum command_case decode_command(char* command) {
 int main(void)
 {
   char command_input[256];
-  char* input_iterator;
+  char* input_iterator, *find_result;
   int64_t key;
   uint32_t i;
-
-  uint64_t temp_pages[20];
 
   if (open_db("database") != 0) {
     printf("(main) DB Opening is failed.\n");  
@@ -85,25 +98,6 @@ int main(void)
 #ifdef DBG
   parameter_check();
 #endif
-
-  for (i = 0; i < 10; ++i) {
-    temp_pages[i] = page_alloc();
-  }
-  temp_pages[10] = page_alloc();
-  print_header_page();
-
-  
-  free_page_clean();
-
-  for (i = 0; i < 11; ++i) {
-    if(page_free(temp_pages[i]) == false) {
-      assert(false);
-    }
-  }
-
-  free_page_clean();
-
-
   printf("> ");
   while(fgets(command_input, sizeof(command_input), stdin) != NULL){
     input_iterator = command_input;
@@ -152,7 +146,7 @@ int main(void)
         input_iterator[i] = '\0';
         key = atol(input_iterator);
         input_iterator += i + 1;
-        
+
         // Parsed input check
         if (key == 0) {
           printf("(insert) key conversion to integer is failed.\n");
@@ -169,6 +163,7 @@ int main(void)
         printf("key: %ld, value: %s\n", key, input_iterator);
 #endif
         insert(key, input_iterator);
+
 
         break;
       case FIND:
@@ -190,7 +185,11 @@ int main(void)
 #ifdef DBG
         printf("key: %ld\n", key);
 #endif
-        // call find(key);
+        if((find_result = find(key)) != NULL) {
+          printf("Key #%ld is found. Value : %s\n", key, find_result);
+        } else {
+          printf("Key #%ld is not found.\n", key);
+        }
 
         break;
       case DELETE:
@@ -216,6 +215,11 @@ int main(void)
         // call delete(key);
 
         break;
+
+      case TEST:
+        testing();
+        break;
+
 
       case INVALID:
       default:

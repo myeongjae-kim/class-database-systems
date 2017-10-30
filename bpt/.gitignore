@@ -4,3 +4,4 @@ database
 *.out
 ref
 input*
+output

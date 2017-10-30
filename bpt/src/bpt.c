@@ -1,13 +1,12 @@
-/* File Name : bpt.c Author    : Kim, Myeong Jae
+/* File Name : bpt.c
+ * Author    : Kim, Myeong Jae
  * Due Date  : 2017-11-5
  *
  * This is a implementation of disk-based b+tree */
 
 #include "bpt.h"
 
-#ifdef DBG
 #include <assert.h>
-#endif
 
 #include <string.h>
 #include <sys/stat.h>
@@ -312,13 +311,38 @@ int insert (int64_t key, char *value){
 }
 
 
-/** char * find (int64_t key){
-  *
-  *   return NULL;
-  * }
-  *
-  *
-  * int delete (int64_t key){
+char find_result_buffer[VALUE_SIZE];
+char * find(int64_t key){
+  uint64_t i = 0;
+  page_object_t page_buffer;
+
+  uint64_t leaf_page = find_leaf_page(key);
+
+  if (leaf_page == 0) {
+    return NULL;
+  }
+
+  page_object_constructor(&page_buffer);
+  page_buffer.set_current_page_number(&page_buffer, leaf_page);
+  page_buffer.read(&page_buffer);
+
+  for (i = 0; i < page_buffer.get_number_of_keys(&page_buffer); ++i) {
+    if (page_buffer.page.content.records[i].key == (uint64_t)key) {
+      break;
+    }
+  }
+  if (i == page_buffer.get_number_of_keys(&page_buffer)) {
+    return NULL;
+  } else {
+    memset(find_result_buffer, 0, sizeof(find_result_buffer));
+    memcpy(find_result_buffer, page_buffer.page.content.records[i].value,
+        sizeof(find_result_buffer));
+    return find_result_buffer;
+  }
+}
+
+
+/** int delete (int64_t key){
   *
   *   return 0;
   * } */
