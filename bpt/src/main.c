@@ -41,8 +41,8 @@ void parameter_check(void) {
   printf("iternal_page_size: %ld\n", sizeof(internal_page_t));
   assert(sizeof(internal_page_t) == 4096);
 
-  printf("page_t size: %ld\n", sizeof(page_t));
-  assert(sizeof(page_t) == 4096);
+  printf("page_t size: %ld\n", sizeof(struct __page));
+  assert(sizeof(struct __page) == 4096);
 
 
   printf("(parameter_check) parameter checking is successful.\n");

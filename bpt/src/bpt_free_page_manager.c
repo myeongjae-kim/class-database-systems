@@ -515,12 +515,3 @@ void free_page_clean(){
   /** header_page->set_number_of_pages(header_page, last_content_page_number + 2); */
   return;
 }
-
-
-// next()
-// is_last()
-// find(const uint64_t page_number)
-//
-// Add new free page to the tail.
-// add(const uint64_t number_of_pages)
-//

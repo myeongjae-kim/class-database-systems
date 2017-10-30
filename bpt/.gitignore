@@ -3,3 +3,4 @@ database
 *.o
 *.out
 ref
+input*

@@ -68,6 +68,7 @@ typedef struct __internal_page_element {
 
 #define RECORD_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
     / sizeof(record_t))
+#define RECORD_ORDER (RECORD_PER_PAGE + 1)
 typedef struct __leaf_page {
   page_header_t header;
   record_t records[RECORD_PER_PAGE];
@@ -75,6 +76,7 @@ typedef struct __leaf_page {
 
 #define OFFSETS_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
     / sizeof(internal_page_element_t))
+#define OFFSET_ORDER (OFFSETS_PER_PAGE + 1)
 typedef struct __internal_page {
   page_header_t header;
   internal_page_element_t offsets[OFFSETS_PER_PAGE];

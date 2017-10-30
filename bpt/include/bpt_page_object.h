@@ -10,20 +10,21 @@ union __page_content {
   internal_page_element_t key_and_offsets[OFFSETS_PER_PAGE];
 };
 
-typedef struct __page {
+struct __page {
   page_header_t header;
   union __page_content content;
-} page_t;
+};
 
 
 enum page_type {INVALID_PAGE, INTERNAL_PAGE, LEAF_PAGE};
 
 // Object start
+
 typedef struct __page_object {
   struct __page_object *this;
 
   // page content can be interpreted as leaf page of internal page.
-  page_t page;
+  struct __page page;
 
   enum page_type type;
 
@@ -70,8 +71,11 @@ typedef struct __page_object {
 
   bool (*insert_record)(struct __page_object * const,
       const record_t * const record);
-  bool (*insert_key_and_offset)(struct __page_object * const,
-      const internal_page_element_t * const key_and_offset);
+  /* bool (*insert_key_and_offset)(struct __page_object * const,
+   *     const internal_page_element_t * const key_and_offset); */
+
+  bool (*insert_record_after_splitting)(struct __page_object * const this,
+      const record_t * const record);
 
   bool (*read)(struct __page_object * const) ;
   bool (*write)(const struct __page_object * const);

@@ -66,6 +66,7 @@ void print_page(const uint64_t page_number) {
 
   go_to_page_number(page_number);
 
+  memset(&header, 0 , sizeof(header));
   if (read(db, &header, sizeof(header)) < 0) {
     perror("(print_page)");
     exit(1);
@@ -129,389 +130,62 @@ void initialize_db(void) {
   // 2. Free page dummy
   // 3. Root page
 
-  page_header_t page_header = {2 * PAGE_SIZE, 1, 0, {0}, 0};
+  // Root's parent offset should be zero.
+  page_header_t page_header = {0, 1, 0, {0}, 0};
   write_page_header(&page_header);
 }
-
-/** void clear_page(const uint64_t page_number) {
-  *   go_to_page_number(page_number);
-  *   if (write(db, empty_page_dummy, PAGE_SIZE) < 0) {
-  *     perror("(clear_page)");
-  *     assert(false);
-  *     exit(1);
-  *   }
-  * } */
-
-// Delete page and return page to free page list.
-// Clear the page (fill whole page zero) and insert next free page offset.
-// Deleted page will be the head of free page list.
-/** bool delete_page(const uint64_t page_number){
-  *
-  *   // Return the deleted page to free list.
-  *   // Reinitialize first 8 byte zero.
-  *   // Deleted page will be head of free list.
-  *   if (page_number <= 1) {
-  *     fprintf(stderr, "(delete_page) Warning: Header page or Root page \
-  * cannot be deleted.\n");
-  *     fprintf(stderr, "(delete_page) Deletion failed.\n");
-  *     return false;
-  *   } else if(page_number
-  *       >= header_page->get_number_of_pages(header_page)) {
-  *     fprintf(stderr, "(delete_page) Warning: Page number is \
-  * bigger than last page number.\n");
-  *     fprintf(stderr, "(delete_page) Deletion failed.\n");
-  *     return false;
-  *   }
-  *   // If the argument is last free page number, free list will be cycle
-  *   // It is very dangerous.
-  *
-  *   // Clear the page
-  *   clear_page(page_number);
-  *
-  *   // get current free page head offset
-  *   off64_t current_free_page_head =
-  *     header_page->get_free_page_offset(header_page);
-  *
-  *   // Write current head offset to deleted page.
-  *   // The free page offset of header page will pointing this deleted page.
-  *   go_to_page_number(page_number);
-  *   if (write(db, &current_free_page_head, sizeof(current_free_page_head)) < 0) {
-  *     perror("(delete_page)");
-  *     assert(false);
-  *     exit(1);
-  *   }
-  *
-  *
-  *   // The free page offset of header page will pointing this deleted page.
-  *   header_page->set_free_page_offset(header_page, page_number * PAGE_SIZE);
-  *
-  *   return true;
-  * } */
-  
-
-// It is called when a free page list is empty.
-// Pages are added to tail of the list.
-// ** At least one free page must exist always **
-/** void add_free_page(){
-  *   const int8_t N_OF_ADDED_PAGE = 10;
-  *   int8_t i;
-  *
-  *   // Ten free page will be added
-  *   off64_t current_free_page = -1;
-  *   off64_t next_free_page = header_page->get_free_page_offset(header_page);
-  *   int32_t read_bytes;
-  *
-  *   // At least one free page must exist.
-  *   assert(next_free_page != 0);
-  *   assert(next_free_page % PAGE_SIZE == 0);
-  *
-  *   // Find last page
-  *   do {
-  *     current_free_page = next_free_page;
-  *     go_to_page_number(current_free_page / PAGE_SIZE);
-  *
-  *     // File offset is on free page
-  *     // Read next page offset
-  *
-  *     read_bytes = read(db, &next_free_page, sizeof(next_free_page));
-  *     if (read_bytes < 0) {
-  *       perror("(add_free_page)");
-  *       assert(false);
-  *       exit(1);
-  *     }
-  *   } while(next_free_page != 0 && read_bytes != 0);
-  *
-  *
-  *   // current_free_page is last page offset because its content is zero.
-  *   next_free_page = header_page->get_number_of_pages(header_page) * PAGE_SIZE;
-  *
-  *   // add free pages
-  *   for (i = 0; i < N_OF_ADDED_PAGE; ++i) {
-  *     go_to_page_number(current_free_page / PAGE_SIZE);
-  *     if (write(db, &next_free_page, sizeof(next_free_page)) < 0) {
-  *       perror("(add_free_page)");
-  *       assert(false);
-  *       exit(1);
-  *     }
-  *
-  *     current_free_page = next_free_page;
-  *     next_free_page += PAGE_SIZE;
-  *   }
-  *
-  *
-  *   // increase number of pages
-  *   header_page->set_number_of_pages(header_page,
-  *       header_page->get_number_of_pages(header_page) + N_OF_ADDED_PAGE);
-  *
-  *
-  * #ifdef DBG
-  *   printf("(add_free_page) Ten free page is added: Last page Number %ld\n",
-  *       header_page->get_number_of_pages(header_page) - 1);
-  * #endif
-  *
-  * } */
-
-
-// This function returns a page number
-// Get a page from free list
-/** uint64_t page_alloc(){
-  *   off64_t current_free_page_offset;
-  *   off64_t next_free_page_offset = 0;
-  *
-  *   //  Make sure at least one free page is left.
-  *   //  Below while loop is executed maximum two.
-  *   //  If a head of free page list is not the last free page,
-  *   // we will meet the 'break;'
-  *   //  If not, ten free page will be added,
-  *   // and we will meet the 'break;' in second loop
-  *   uint8_t i = 0;
-  *   while(1) {
-  *     // Error check
-  *     // While loop cannot be iterated more than 2
-  *     assert(i < 2);
-  *
-  *     current_free_page_offset = header_page->get_free_page_offset(header_page);
-  *
-  *     // Check whether it is correct offset
-  *     assert(current_free_page_offset % PAGE_SIZE == 0);
-  *     go_to_page_number(current_free_page_offset / PAGE_SIZE);
-  *
-  *     // If next_free_page_offset is zero, it is last page.
-  *     // Add free page.
-  *     if (read(db, &next_free_page_offset, sizeof(next_free_page_offset)) < 0) {
-  *       perror("(page_alloc)");
-  *       assert(false);
-  *       exit(1);
-  *     }
-  *
-  *     if (next_free_page_offset == 0) {
-  * #ifdef DBG
-  *       printf("(page_alloc) Current free page is last one.\n");
-  *       printf("(page_alloc) Add new free page and use it.\n");
-  * #endif
-  *       add_free_page();
-  *     } else {
-  *       // Current free page is not a last one. use this page.
-  *       break;
-  *     }
-  *     i++;
-  *   }
-  *
-  *   // Change free page offset of header_page
-  *   // Clear current free page and fill it.
-  *   //
-  *   // Next free page offset will be the free page offset of header_page
-  *   header_page->set_free_page_offset(header_page, next_free_page_offset);
-  *
-  *   // Go to current free page and fill it.
-  *   clear_page(current_free_page_offset / PAGE_SIZE);
-  *
-  *   // move file offset to allocated page
-  *   go_to_page_number(current_free_page_offset / PAGE_SIZE);
-  *
-  *   return current_free_page_offset / PAGE_SIZE;
-  * } */
-
 
 // This function returns a page number
 // Get a page from free list
 // Leaf and internal page has same structure.
-uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
-    const uint32_t is_leaf, const uint64_t one_more_page_number) {
-  uint64_t new_page_number = page_alloc();
-  page_header_t page_header;
-  memset(&page_header, 0, sizeof(page_header));
-
-  // parent page number should be smaller than # of pages.
-  assert(parent_page_number < header_page->get_number_of_pages(header_page));
-  page_header.linked_page_offset = parent_page_number * PAGE_SIZE;
-  page_header.is_leaf = is_leaf;
-  page_header.one_more_page_offset = one_more_page_number * PAGE_SIZE;
-
-  // write header to disk
-  go_to_page_number(new_page_number);
-  write_page_header(&page_header);
-
-  return new_page_number;
-}
-
-
-// This is a wrapper of allocation function
-uint64_t leaf_page_alloc(const uint64_t parent_page_number,
-    const uint64_t right_sibling_page_number) {
-  return leaf_or_internal_page_alloc(parent_page_number,
-      1, right_sibling_page_number);
-}
-
-// This is a wrapper of allocation function
-uint64_t internal_page_alloc(const uint64_t parent_page_number,
-    const uint64_t one_more_page_number) {
-  return leaf_or_internal_page_alloc(parent_page_number,
-      0, one_more_page_number);
-}
-
-
-// This function check whether the page is free page of not
-/** bool is_free_page_except_last_one(const uint64_t page_number) {
-  *   if (page_number < 2) {
-  * #ifdef DBG
-  *     fprintf(stderr, "(is_free_page_except_last_one) reserved pages. \
-  * Header or Root page.\n");
-  * #endif
-  *     return false;
-  *   }
+/** uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
+  *     const uint32_t is_leaf, const uint64_t one_more_page_number) {
+  *   uint64_t new_page_number = page_alloc();
+  *   page_header_t page_header;
+  *   memset(&page_header, 0, sizeof(page_header));
   *
-  *   // In a normal situation, leaf or internal page must get a content.
-  *   // If a content is whole zero, it is leaf page.
+  *   // parent page number should be smaller than # of pages.
+  *   assert(parent_page_number < header_page->get_number_of_pages(header_page));
+  *   page_header.linked_page_offset = parent_page_number * PAGE_SIZE;
+  *   page_header.is_leaf = is_leaf;
+  *   page_header.one_more_page_offset = one_more_page_number * PAGE_SIZE;
   *
-  *   go_to_page_number(page_number);
+  *   // write header to disk
+  *   go_to_page_number(new_page_number);
+  *   write_page_header(&page_header);
   *
-  *   // clear page_buffer
-  *   uint8_t page_buffer[PAGE_SIZE];
-  *   memset(page_buffer, 0, PAGE_SIZE);
-  *
-  *   if (read(db, page_buffer, PAGE_SIZE) < 0) {
-  *     perror("(is_free_page_except_last_one)");
-  *     assert(false);
-  *     exit(1);
-  *   }
-  *
-  *   const uint8_t next_free_page_offset_size = sizeof(uint64_t);
-  *   uint64_t next_free_page_offset;
-  *
-  *   // Read first eight byte.
-  *   memcpy(&next_free_page_offset,
-  *       page_buffer,
-  *       next_free_page_offset_size);
-  *
-  *   if (next_free_page_offset == 0) {
-  * #ifdef DBG
-  *     printf("(is_free_page_except_last_one) Page #%ld is \
-  * the last free page or not allocated page.\n", page_number);
-  * #endif
-  *     return false;
-  *   } else if (memcmp(&page_buffer[next_free_page_offset_size],
-  *         &empty_page_dummy[next_free_page_offset_size],
-  *         PAGE_SIZE - next_free_page_offset_size) == 0) {
-  *     // It is free page.
-  * #ifdef DBG
-  *     printf("(is_free_page_except_last_one) Page #%ld is \
-  * a free page.\n", page_number);
-  * #endif
-  *     return true;
-  *   }
-  *
-  *   // Page exists but not a free page.
-  *   return false;
+  *   return new_page_number;
   * }
-  *  */
-
-
-// This function removes free pages which are in the end of file.
-// By removing free pages, DB size will be shrinked.
-//
-// TODO: Free page leakage can be occurred. Change the algorithm
-// Pseudo code
-//  Find the page number of last page that is not a free page.
-//  Iterate whole free page list
-//    If a current free page number is bigger than the number of last page,
-//      -> delete <- the free page in the list
-//    Endif
-//  End
-//
-//  'Delete' means that connecting previous page
-//  to next page and remove myself.
-//  TODO: Below are legacy code. Do not use it.
-/** void make_free_page_list_compact() {
-  * #ifdef DBG
-  *   printf("(make_free_page_list_compact) I am called!\n");
-  * #endif
   *
-  *   // Find the start of last free pages
-  *   // Generally, free pages are in the end of file.
-  *   // Below page number indicates where the start of last free pages.
   *
-  *   uint64_t number_of_pages = header_page->get_number_of_pages(header_page);
-  *
-  *   // db at least three pages.
-  *   // Header page, Root page, Free page.
-  *   assert(number_of_pages >= 3);
-  *
-  *   // i is the last page
-  *   uint64_t reverse_free_page_iterator = number_of_pages - 1;
-  *
-  *   // last free page had no value
-  * #ifdef DBG
-  *   uint8_t page_buffer[PAGE_SIZE];
-  *   memset(page_buffer, 0, PAGE_SIZE);
-  *   go_to_page_number(reverse_free_page_iterator);
-  *   if (read(db, page_buffer, PAGE_SIZE) < 0) {
-  *     perror("make_free_page_list_compact()");
-  *     assert(false);
-  *     exit(1);
-  *   }
-  *   assert(memcmp(page_buffer, empty_page_dummy, PAGE_SIZE) == 0);
-  * #endif
-  *
-  *   // Below '2' means the minimum page number of free page
-  *   while (reverse_free_page_iterator > 2) {
-  *     // The reason for decreasing iterator first is that
-  *     // we already know current reverse_free_page_iterator is pointing
-  *     // a free page which is last.
-  *     //
-  *     // If a last free page number is inserted to is_free_page_except_last_one,
-  *     // it will return false.
-  *     reverse_free_page_iterator--;
-  *     if ( ! is_free_page_except_last_one(reverse_free_page_iterator)) {
-  *       break;
-  *     }
-  *   }
-  *
-  *   uint64_t start_of_last_free_pages = reverse_free_page_iterator;
-  *
-  *   //TODO: While iterating free page list, if current page is same or
-  *   // bigger than start_of_last_free_pages, remove it.
-  *   // connect previous free page with next page.
-  *   // Do it these procedure until the end
-  *
-  *   //TODO: Below should be changed.
-  *
-  *   // Fill zero to the start page of last free pages
-  *   // It will be last page of free pages.
-  *   go_to_page_number(start_of_last_free_pages);
-  *   if (write(db, empty_page_dummy, PAGE_SIZE) < 0) {
-  *     perror("make_free_page_list_compact()");
-  *     assert(false);
-  *     exit(1);
-  *   }
-  *
-  *   //  Truncate file
-  *   //  Below function removes last free page from the DB,
-  *   // yet it is okay because last free page does not have any value.
-  *   if (ftruncate64(db, PAGE_SIZE * (start_of_last_free_pages)) < 0) {
-  *     perror("make_free_page_list_compact()");
-  *     assert(false);
-  *     exit(1);
-  *   }
-  *
-  *   // Make number_of_pages correct.
-  *   header_page->set_number_of_pages(header_page, start_of_last_free_pages + 1);
+  * // This is a wrapper of allocation function
+  * uint64_t leaf_page_alloc(const uint64_t parent_page_number,
+  *     const uint64_t right_sibling_page_number) {
+  *   return leaf_or_internal_page_alloc(parent_page_number,
+  *       1, right_sibling_page_number);
   * }
-  *  */
+  *
+  * // This is a wrapper of allocation function
+  * uint64_t internal_page_alloc(const uint64_t parent_page_number,
+  *     const uint64_t one_more_page_number) {
+  *   return leaf_or_internal_page_alloc(parent_page_number,
+  *       0, one_more_page_number);
+  * } */
 
-/*       Functions related with Insert()         */
+
+
 
 // TODO: Not yet debugged.
 // This function finds the leaf page that a key will be stored.
 uint64_t find_leaf_page(const int key) {
   uint32_t i = 0;
   uint8_t page_buffer[PAGE_SIZE];
-  memset(page_buffer, 0, PAGE_SIZE);
 
   // Get root page
   go_to_page_number(
       header_page->get_root_page_offset(header_page) / PAGE_SIZE);
 
+  memset(page_buffer, 0, PAGE_SIZE);
   if (read(db, page_buffer, PAGE_SIZE) < 0) {
     perror("(find_leaf_page)");
     assert(false);
@@ -530,6 +204,8 @@ uint64_t find_leaf_page(const int key) {
     assert(page.get_type(&page) != INVALID_PAGE);
 
     // Internal page is found
+    
+    // Check one_more_page_offset
     i = 0;
     while(i < page.get_number_of_keys(&page)) {
       if (key >= page.get_key_and_offset(&page, i)->key) {
@@ -538,20 +214,26 @@ uint64_t find_leaf_page(const int key) {
        break;
       }
     }
+
+
     // Next page is found. Go to next page
-    page.set_current_page_number(&page, 
-        page.get_key_and_offset(&page, i)->page_offset / PAGE_SIZE);
+    if (i == 0) {
+      page.set_current_page_number(&page, 
+          page.page.header.one_more_page_offset / PAGE_SIZE);
+    } else {
+    // i-1 because of the internal page structure
+      page.set_current_page_number(&page, 
+          page.get_key_and_offset(&page, i-1)->page_offset / PAGE_SIZE);
+    }
     page.read(&page);
+
   }
 
 
   return page.get_current_page_number(&page);
 }
 
-
 /*     Functions related with Insert() End       */
-
-
 
 
 int open_db (char *pathname){
@@ -605,7 +287,7 @@ int insert (int64_t key, char *value){
   // TODO: Implement find
 
 
-  /** Create a new rcord */
+  /** Create a new record */
   record_t record;
   record.key = key;
   strncpy(record.value, value, sizeof(record.value));
@@ -625,24 +307,20 @@ int insert (int64_t key, char *value){
   }
 
   /** If leaf has no room for record, split and insert */
-  // TODO
-  fprintf(stderr, "(insert) Not yet implemented\n");
-  assert(false);
-
-  return 0;
+  return page.insert_record_after_splitting(&page, &record);
 }
 
 
-char * find (int64_t key){
-
-  return NULL;
-}
-
-
-int delete (int64_t key){
-
-  return 0;
-}
+/** char * find (int64_t key){
+  *
+  *   return NULL;
+  * }
+  *
+  *
+  * int delete (int64_t key){
+  *
+  *   return 0;
+  * } */
 
 
 
