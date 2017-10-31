@@ -30,10 +30,15 @@ header_object_t *header_page = &__header_object;
 // Clearing page.
 const uint8_t empty_page_dummy[PAGE_SIZE] = {0};
 
+
+static bool clear_resource_is_called = false;
+
 void clear_resource(void) {
-  free_page_clean();
-  close(db);
-  /** make_free_page_list_compact(); */
+  if (clear_resource_is_called == false) {
+    free_page_clean();
+    close(db);
+    clear_resource_is_called = true;
+  }
 }
 
 uint64_t get_current_page_number(void) {
@@ -115,7 +120,7 @@ void initialize_db(void) {
 
   // The number of pages includes all kinds of pages.
   // '3' means header page, free page dummy, root page
-  
+
   // Free page offset, Root page offset, number of pages.
   header_page->set(header_page, 1 * PAGE_SIZE, 2 * PAGE_SIZE, 3);
 
@@ -139,38 +144,38 @@ void initialize_db(void) {
 // Get a page from free list
 // Leaf and internal page has same structure.
 /** uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
-  *     const uint32_t is_leaf, const uint64_t one_more_page_number) {
-  *   uint64_t new_page_number = page_alloc();
-  *   page_header_t page_header;
-  *   memset(&page_header, 0, sizeof(page_header));
-  *
-  *   // parent page number should be smaller than # of pages.
-  *   assert(parent_page_number < header_page->get_number_of_pages(header_page));
-  *   page_header.linked_page_offset = parent_page_number * PAGE_SIZE;
-  *   page_header.is_leaf = is_leaf;
-  *   page_header.one_more_page_offset = one_more_page_number * PAGE_SIZE;
-  *
-  *   // write header to disk
-  *   go_to_page_number(new_page_number);
-  *   write_page_header(&page_header);
-  *
-  *   return new_page_number;
-  * }
-  *
-  *
-  * // This is a wrapper of allocation function
-  * uint64_t leaf_page_alloc(const uint64_t parent_page_number,
-  *     const uint64_t right_sibling_page_number) {
-  *   return leaf_or_internal_page_alloc(parent_page_number,
-  *       1, right_sibling_page_number);
-  * }
-  *
-  * // This is a wrapper of allocation function
-  * uint64_t internal_page_alloc(const uint64_t parent_page_number,
-  *     const uint64_t one_more_page_number) {
-  *   return leaf_or_internal_page_alloc(parent_page_number,
-  *       0, one_more_page_number);
-  * } */
+ *     const uint32_t is_leaf, const uint64_t one_more_page_number) {
+ *   uint64_t new_page_number = page_alloc();
+ *   page_header_t page_header;
+ *   memset(&page_header, 0, sizeof(page_header));
+ *
+ *   // parent page number should be smaller than # of pages.
+ *   assert(parent_page_number < header_page->get_number_of_pages(header_page));
+ *   page_header.linked_page_offset = parent_page_number * PAGE_SIZE;
+ *   page_header.is_leaf = is_leaf;
+ *   page_header.one_more_page_offset = one_more_page_number * PAGE_SIZE;
+ *
+ *   // write header to disk
+ *   go_to_page_number(new_page_number);
+ *   write_page_header(&page_header);
+ *
+ *   return new_page_number;
+ * }
+ *
+ *
+ * // This is a wrapper of allocation function
+ * uint64_t leaf_page_alloc(const uint64_t parent_page_number,
+ *     const uint64_t right_sibling_page_number) {
+ *   return leaf_or_internal_page_alloc(parent_page_number,
+ *       1, right_sibling_page_number);
+ * }
+ *
+ * // This is a wrapper of allocation function
+ * uint64_t internal_page_alloc(const uint64_t parent_page_number,
+ *     const uint64_t one_more_page_number) {
+ *   return leaf_or_internal_page_alloc(parent_page_number,
+ *       0, one_more_page_number);
+ * } */
 
 
 
@@ -204,14 +209,14 @@ uint64_t find_leaf_page(const int key) {
     assert(page.get_type(&page) != INVALID_PAGE);
 
     // Internal page is found
-    
+
     // Check one_more_page_offset
     i = 0;
     while(i < page.get_number_of_keys(&page)) {
       if (key >= page.get_key_and_offset(&page, i)->key) {
         i++;
       } else {
-       break;
+        break;
       }
     }
 
@@ -221,7 +226,7 @@ uint64_t find_leaf_page(const int key) {
       page.set_current_page_number(&page, 
           page.page.header.one_more_page_offset / PAGE_SIZE);
     } else {
-    // i-1 because of the internal page structure
+      // i-1 because of the internal page structure
       page.set_current_page_number(&page, 
           page.get_key_and_offset(&page, i-1)->page_offset / PAGE_SIZE);
     }
@@ -343,9 +348,9 @@ char * find(int64_t key){
 
 
 /** int delete (int64_t key){
-  *
-  *   return 0;
-  * } */
+ *
+ *   return 0;
+ * } */
 
 
 

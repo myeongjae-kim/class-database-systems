@@ -1,5 +1,4 @@
-/* File Name : main.c
- * Author    : Kim, Myeong Jae
+/* File Name : main.c Author    : Kim, Myeong Jae
  * Due Date  : 2017-11-5
  *
  * This is a main file of disk-based b+tree */
@@ -89,15 +88,14 @@ int main(void)
   char* input_iterator, *find_result;
   int64_t key;
   uint32_t i;
+  bool open_is_called = false;
 
-  if (open_db("database") != 0) {
-    printf("(main) DB Opening is failed.\n");  
-    exit(1);
-  }
-
+  
 #ifdef DBG
   parameter_check();
 #endif
+
+  // Open database first
   printf("> ");
   while(fgets(command_input, sizeof(command_input), stdin) != NULL){
     input_iterator = command_input;
@@ -124,7 +122,65 @@ int main(void)
 #ifdef DBG
         printf("pathname: %s\n", input_iterator);
 #endif
-        // call open_db();
+        if (open_db(input_iterator) != 0) {
+          printf("(main) DB Opening is failed.\n");  
+          exit(1);
+        }
+
+
+        open_is_called = true;
+        break;
+      case INSERT:
+      case FIND:
+      case DELETE:
+      case TEST:
+      case INVALID:
+      default:
+        printf("DB is not ye opened. Open database first.\n");
+        printf("Usage: > open dbname\n");
+        break;
+    }
+
+    if (open_is_called) {
+      break;
+    }
+    printf("> ");
+  }
+
+
+  // get other commands
+
+  printf("> ");
+  while(fgets(command_input, sizeof(command_input), stdin) != NULL){
+    input_iterator = command_input;
+    key = 0;
+
+    if (*input_iterator == '\n') {
+      continue;
+    }
+
+    // Remove linebreak
+    input_iterator = strtok(input_iterator, "\n");
+
+    switch ( decode_command(input_iterator) ) {
+      case OPEN:
+        input_iterator += strlen(commands[OPEN]);
+        if (*input_iterator != ' ') {
+          printf("(open) Argument is invalid.\n");
+          printf("(open) Usage > open <pathname>\n");
+          break;
+        }
+        // Skip space bar
+        input_iterator++;
+
+#ifdef DBG
+        printf("pathname: %s\n", input_iterator);
+#endif
+        if (open_db(input_iterator) != 0) {
+          printf("(main) DB Opening is failed.\n");  
+          exit(1);
+        }
+
 
         break;
       case INSERT:
