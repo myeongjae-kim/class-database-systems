@@ -361,10 +361,10 @@ int delete(int64_t key){
   page_buffer.read(&page_buffer);
   assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
 
-  /** if (page_buffer.delete_record_of_key(&page_buffer, key) == false) { */
-  /**   // Deletion is failed. */
-  /**   return 1; */
-  /** } */
+  if (page_buffer.delete_record_of_key(&page_buffer, key) == false) {
+    // Deletion is failed.
+    return 1;
+  }
 
   return 0;
 }

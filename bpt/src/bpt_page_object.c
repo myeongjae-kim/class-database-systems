@@ -656,6 +656,191 @@ bool __insert_record_after_splitting(struct __page_object * const this,
  * } */
 
 
+void __remove_record_from_page(struct __page_object * const this,
+    const int64_t key) {
+  int32_t i;
+  assert(this->get_type(this) == LEAF_PAGE);
+
+  // Find index of target record
+  for (i = 0; i < (int32_t)RECORD_ORDER; ++i) {
+    if (this->page.content.records[i].key == key) {
+      break;
+    }
+  }
+  assert(i < (int32_t)RECORD_ORDER);
+
+  // Remove the key and shift other keys accordingly.
+  // i is the idx of target record
+
+  // Remove
+  memset(&this->page.content.records[i], 0,
+      sizeof(this->page.content.records[i]));
+
+  // Compaction
+  for (i++; i < this->page.header.number_of_keys; ++i) {
+    memcpy(&this->page.content.records[i-1],
+        &this->page.content.records[i],
+        sizeof(this->page.content.records[i-1]));
+  }
+
+  // Remove redundancy
+  // i-1 is last key idex
+  assert(memcmp(&this->page.content.records[i-1],
+        &this->page.content.records[i-2],
+        sizeof(&this->page.content.records[i-1]) == 0));
+  memset(&this->page.content.records[i-1], 0,
+      sizeof(this->page.content.records[i-1]));
+
+  // One key fewer
+  this->page.header.number_of_keys--;
+
+  // Below is happed only page is root page
+  if (this->page.header.number_of_keys == 0) {
+    // Check whether current page is root page
+    assert(this->current_page_number * PAGE_SIZE
+        == header_page->get_root_page_offset(header_page));
+  }
+
+  this->write(this);
+}
+
+
+int64_t __get_page_number_of_left(const struct __page_object * const this){
+  struct __page_object __parent_page;
+  page_object_constructor(&__parent_page);
+
+  __parent_page.set_current_page_number(&__parent_page,
+      this->page.header.linked_page_offset / PAGE_SIZE);
+  __parent_page.read(&__parent_page);
+
+  // Make it const to forbbid changing parent page's value
+  const struct __page_object * const parent_page = &__parent_page;
+
+  int64_t i;
+  for (i = 0; i < parent_page->page.header.number_of_keys; ++i) {
+    if (parent_page->page.content.key_and_offsets[i].page_offset
+        == this->current_page_number * PAGE_SIZE) {
+      // current page is found.
+      break;
+    }
+  }
+
+  // current page must exist!
+  assert(i != parent_page->page.header.number_of_keys);
+
+  // return page number of left page.
+  //
+  // (i - 1) means the left page.
+  // Even though i == 0, it is okay.
+  return (*(parent_page->page.content.key_and_offsets + (i - 1) )).page_offset
+    / PAGE_SIZE;
+}
+
+
+void __get_k_prime_index_and_its_value(
+    const struct __page_object * const this,
+    const int64_t neighbor_page_number,
+    int64_t * const k_prime_index, int64_t * const k_prime) {
+
+  struct __page_object __parent_page;
+  page_object_constructor(&__parent_page);
+
+  __parent_page.set_current_page_number(&__parent_page,
+      this->page.header.linked_page_offset / PAGE_SIZE);
+  __parent_page.read(&__parent_page);
+
+  // Make it const to forbbid changing parent page's value
+  const struct __page_object * const parent_page = &__parent_page;
+
+  int64_t i;
+  for (i = 0; i < parent_page->page.header.number_of_keys; ++i) {
+    if (parent_page->page.content.key_and_offsets[i].page_offset
+        == neighbor_page_number * PAGE_SIZE) {
+      // neighbor page is found.
+      break;
+    }
+  }
+
+  // neighbor page must exist!
+  assert(i != parent_page->page.header.number_of_keys);
+
+  *k_prime_index = i;
+  *k_prime = parent_page->page.content.key_and_offsets[i].key;
+}
+
+
+bool __delete_record_of_key(struct __page_object * const this,
+    const int64_t key){
+  // This function is called only current page is LEAF_PAGE.
+  assert(this->get_type(this) == LEAF_PAGE);
+
+  // Remove key and value from page.
+
+  __remove_record_from_page(this, key);
+
+
+  /* Case:  Record deletion from the root. 
+   */
+
+  // Do nothing.
+  if (this->get_current_page_number(this) * PAGE_SIZE
+      == header_page->get_root_page_offset(header_page) * PAGE_SIZE) {
+    return true;
+  }
+
+
+  /* Case:  deletion from a node below the root.
+   * (Rest of function body.)
+   */
+
+  /* Determine minimum allowable size of node,
+   * to be preserved after deletion.
+   */
+
+  int64_t min_keys = cut(RECORD_ORDER - 1); // min_keys == 16
+  if (this->get_number_of_keys(this) >= min_keys) {
+    return true;
+  }
+
+  /* Case:  node falls below minimum.
+   * Either coalescence or redistribution
+   * is needed.
+   */
+
+  /* Find the appropriate neighbor node with which
+   * to coalesce.
+   * Also find the key (k_prime) in the parent
+   * between the pointer to node n and the pointer
+   * to the neighbor.
+   */
+
+  // neighbor is right sibling
+  int64_t neighbor_page_number =
+    this->page.header.one_more_page_offset / PAGE_SIZE;
+
+  // It means that current page is rightmost page.
+  // neighbor will be the left page of current page.
+  if (neighbor_page_number == 0) {
+    neighbor_page_number = __get_page_number_of_left(this);
+  }
+
+  // At least one neighbor page is exists
+  // becuase current page is not a root.
+  assert(neighbor_page_number != 0);
+
+  int64_t k_prime_index = -1;
+  int64_t k_prime = -1;
+  __get_k_prime_index_and_its_value(
+      this, neighbor_page_number,
+      &k_prime_index, &k_prime);
+
+  assert(k_prime_index != -1 && k_prime != -1);
+
+  //TODO: Capacity?
+
+}
+
+
 void page_object_constructor(page_object_t * const this) {
   memset(this, 0, sizeof(*this));
   this->this = this;
@@ -688,5 +873,8 @@ void page_object_constructor(page_object_t * const this) {
   /** this->insert_key_and_offset = __insert_key_and_offset; */
   this->insert_record_after_splitting =
     __insert_record_after_splitting;
+
+
+  this->delete_record_of_key = __delete_record_of_key;
 
 }
