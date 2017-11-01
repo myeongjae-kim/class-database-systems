@@ -147,6 +147,10 @@ int main(void)
     printf("> ");
   }
 
+  if (open_is_called == false) {
+    // The input is EOF.
+    return 0;
+  }
 
   // get other commands
 

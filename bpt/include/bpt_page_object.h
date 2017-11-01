@@ -77,6 +77,9 @@ typedef struct __page_object {
   bool (*insert_record_after_splitting)(struct __page_object * const this,
       const record_t * const record);
 
+  bool (*delete_record_of_key)(struct __page_object * const this,
+      const int64_t key);
+
   bool (*read)(struct __page_object * const) ;
   bool (*write)(const struct __page_object * const);
   void (*print)(const struct __page_object * const);

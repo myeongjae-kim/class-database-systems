@@ -347,10 +347,27 @@ char * find(int64_t key){
 }
 
 
-/** int delete (int64_t key){
- *
- *   return 0;
- * } */
+int delete(int64_t key){
+  page_object_t page_buffer;
+  uint64_t leaf_page = find_leaf_page(key);
+
+  if (leaf_page == 0) {
+    // Key is not found
+    return 1;
+  }
+
+  page_object_constructor(&page_buffer);
+  page_buffer.set_current_page_number(&page_buffer, leaf_page);
+  page_buffer.read(&page_buffer);
+  assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
+
+  /** if (page_buffer.delete_record_of_key(&page_buffer, key) == false) { */
+  /**   // Deletion is failed. */
+  /**   return 1; */
+  /** } */
+
+  return 0;
+}
 
 
 
