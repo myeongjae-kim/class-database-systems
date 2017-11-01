@@ -28,7 +28,7 @@ typedef struct __page_object {
 
   enum page_type type;
 
-  uint64_t current_page_number;
+  int64_t current_page_number;
 
   // methods
 
@@ -41,30 +41,30 @@ typedef struct __page_object {
   void (*set_type)(struct __page_object * const,
       enum page_type type);
 
-  uint64_t (*get_current_page_number)(const struct __page_object * const);
+  int64_t (*get_current_page_number)(const struct __page_object * const);
   void (*set_current_page_number)(struct __page_object * const,
-      uint64_t page_number);
+      int64_t page_number);
 
-  uint32_t (*get_number_of_keys)(const struct __page_object * const);
+  int32_t (*get_number_of_keys)(const struct __page_object * const);
   void (*set_number_of_keys)(struct __page_object * const,
-      const uint32_t number_of_keys);
+      const int32_t number_of_keys);
 
 
   internal_page_element_t* (*get_key_and_offset)(
       const struct __page_object * const,
-      const uint32_t idx);
+      const int32_t idx);
   void (*set_key_and_offset)(
       struct __page_object * const,
-      const uint32_t idx,
+      const int32_t idx,
       const internal_page_element_t * const key_and_offset);
 
 
   record_t* (*get_record)(
       const struct __page_object * const,
-      const uint32_t idx);
+      const int32_t idx);
   void (*set_record)(
       struct __page_object * const,
-      const uint32_t idx,
+      const int32_t idx,
       const record_t * const key_and_offset);
 
   bool (*has_room)(const struct __page_object * const);

@@ -10,7 +10,7 @@ extern header_object_t *header_page;
 /* Finds the appropriate place to
  * split a node that is too big into two.
  */
-uint64_t cut( uint64_t length ) {
+int64_t cut( int64_t length ) {
   if (length % 2 == 0)
     return length/2;
   else
@@ -97,23 +97,23 @@ static void __set_page_type(struct __page_object * const this,
   this->write(this);
 }
 
-static uint64_t __get_current_page_number(const struct __page_object * const this){
+static int64_t __get_current_page_number(const struct __page_object * const this){
   return this->current_page_number;
 }
 static void __set_current_page_number(struct __page_object * const this,
-    uint64_t page_number){
+    int64_t page_number){
 
   /* exception: this method does not write in spite of set methods */
   this->current_page_number = page_number;
 }
 
 
-static uint32_t __get_number_of_keys(const struct __page_object * const this){
+static int32_t __get_number_of_keys(const struct __page_object * const this){
   return this->page.header.number_of_keys;
 }
 
 static void __set_number_of_keys(struct __page_object * const this,
-    const uint32_t number_of_keys){
+    const int32_t number_of_keys){
   this->page.header.number_of_keys = number_of_keys;
   this->write(this);
 }
@@ -121,7 +121,7 @@ static void __set_number_of_keys(struct __page_object * const this,
 
 static internal_page_element_t* __get_key_and_offset(
     const struct __page_object * const this,
-    const uint32_t idx) {
+    const int32_t idx) {
   if (this->type != INTERNAL_PAGE) {
     printf("(page_object_t->get_key_and_offset)\
  You've called wrong function.\n");
@@ -137,7 +137,7 @@ static internal_page_element_t* __get_key_and_offset(
 
 static void __set_key_and_offset(
     struct __page_object * const this,
-    const uint32_t idx,
+    const int32_t idx,
     const internal_page_element_t * const key_and_offset) {
   if (this->type != INTERNAL_PAGE) {
     printf("(page_object_t->set_key_and_offset)\
@@ -155,7 +155,7 @@ static void __set_key_and_offset(
 
 static record_t* __get_record(
     const struct __page_object * const this,
-    const uint32_t idx) {
+    const int32_t idx) {
   if (this->type != LEAF_PAGE) {
     printf("(page_object_t->get_record)\
  You've called wrong function.\n");
@@ -171,7 +171,7 @@ static record_t* __get_record(
 
 static void __set_record(
     struct __page_object * const this,
-    const uint32_t idx,
+    const int32_t idx,
     const record_t * const record) {
   if (this->type != LEAF_PAGE) {
     printf("(page_object_t->set_record)\
@@ -189,9 +189,9 @@ static void __set_record(
 
 static bool __has_room(const struct __page_object * const this) {
   if (this->type == INTERNAL_PAGE) {
-      return this->page.header.number_of_keys < OFFSETS_PER_PAGE;
+      return this->page.header.number_of_keys < (int64_t)OFFSETS_PER_PAGE;
   } else if (this->type == LEAF_PAGE) {
-      return this->page.header.number_of_keys < RECORD_PER_PAGE;
+      return this->page.header.number_of_keys < (int64_t)RECORD_PER_PAGE;
   } else {
     // Current page is invalid page.
     // This case should not be occurred.
@@ -218,7 +218,7 @@ bool __insert_record(struct __page_object * const this,
   }
 
   // Insert.
-  uint64_t i, insertion_point = 0;
+  int64_t i, insertion_point = 0;
   // find the place to be inserted
   while (insertion_point < this->page.header.number_of_keys
       && this->page.content.records[insertion_point].key < record->key)
@@ -239,10 +239,10 @@ bool __insert_record(struct __page_object * const this,
 
 
 bool __insert_into_new_root(
-    struct __page_object * const left, uint64_t key,
+    struct __page_object * const left, int64_t key,
     struct __page_object * const right){
 
-  uint64_t root_page_number = page_alloc();
+  int64_t root_page_number = page_alloc();
 
   page_object_t root;
   page_object_constructor(&root);
@@ -274,12 +274,12 @@ bool __insert_into_new_root(
 
 
 bool __insert_into_node(struct __page_object * const node,
-    int64_t left_index, uint64_t key,
+    int64_t left_index, int64_t key,
     const struct __page_object * const right) {
   int64_t i;
 
   // Precondition: Node is not full.
-  assert(node->get_number_of_keys(node) < OFFSETS_PER_PAGE);
+  assert(node->get_number_of_keys(node) < (int64_t)OFFSETS_PER_PAGE);
 
   //TODO
   for (i = node->get_number_of_keys(node) - 1; i > left_index; --i) {
@@ -303,9 +303,9 @@ bool __insert_into_node(struct __page_object * const node,
 
 int64_t __get_left_index(const struct __page_object* const parent,
     const struct __page_object * const left) {
-  uint64_t i;
+  int64_t i;
 
-  uint64_t left_page_offset = left->get_current_page_number(left) * PAGE_SIZE;
+  int64_t left_page_offset = left->get_current_page_number(left) * PAGE_SIZE;
 
   // If left page is in one_more_page_offset, return -1;
   // Otherwise, return index.
@@ -313,7 +313,7 @@ int64_t __get_left_index(const struct __page_object* const parent,
     return -1;
   }
 
-  for (i = 0; i < OFFSET_ORDER; ++i) {
+  for (i = 0; i < (int64_t)OFFSET_ORDER; ++i) {
     if (parent->page.content.key_and_offsets[i].page_offset
         == left_page_offset) {
       return i;
@@ -327,12 +327,12 @@ int64_t __get_left_index(const struct __page_object* const parent,
 
 
 bool __insert_into_parent(
-    struct __page_object * const left, uint64_t key,
+    struct __page_object * const left, int64_t key,
     struct __page_object * const right);
 
 //TODO: Definitely here is the problem place.
 bool __insert_into_node_after_splitting(struct __page_object * const old_node,
-    int64_t left_index, uint64_t key, struct __page_object * const right){
+    int64_t left_index, int64_t key, struct __page_object * const right){
   // We do not need to care the one_more_page_offset in header
   int64_t i, j;
 
@@ -371,7 +371,7 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
   //TODO
   int64_t split = cut(OFFSET_ORDER);
 
-  uint64_t new_page_number = page_alloc();
+  int64_t new_page_number = page_alloc();
   struct __page_object new_node;
   page_object_constructor(&new_node);
 
@@ -394,7 +394,7 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
   new_node.page.header.one_more_page_offset =
     temp_key_and_offsets[i].page_offset;
 
-  uint64_t k_prime = temp_key_and_offsets[split - 1].key;
+  int64_t k_prime = temp_key_and_offsets[split - 1].key;
 
   for (++i, j = 0; i < (int64_t)OFFSET_ORDER; ++i, ++j) {
     memcpy(&new_node.page.content.key_and_offsets[j],
@@ -437,11 +437,11 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
 }
 
 bool __insert_into_parent(
-    struct __page_object * const left, uint64_t key,
+    struct __page_object * const left, int64_t key,
     struct __page_object * const right){
 
   int64_t left_index;
-  uint64_t parent_offset;
+  int64_t parent_offset;
 
   parent_offset = left->page.header.linked_page_offset;
 
@@ -470,7 +470,7 @@ bool __insert_into_parent(
   /* Simple case: the new key fits into the node.
   */
 
-  if (parent.get_number_of_keys(&parent) < OFFSET_ORDER - 1) {
+  if (parent.get_number_of_keys(&parent) < (int64_t)OFFSET_ORDER - 1) {
     return __insert_into_node(&parent, left_index, key, right);
   }
 
@@ -486,7 +486,7 @@ bool __insert_into_parent(
 
 bool __insert_record_after_splitting(struct __page_object * const this,
     const record_t * const record){
-  uint32_t i, j;
+  int32_t i, j;
 
 
   if (this->type != LEAF_PAGE) {
@@ -533,7 +533,7 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   // Set header of page.
 
   // page_alloc returns empty page
-  uint64_t new_leaf_page_number = page_alloc();
+  int64_t new_leaf_page_number = page_alloc();
 
   page_object_t new_leaf;
   page_object_constructor(&new_leaf);
@@ -548,13 +548,13 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   record_t *temp_records = (record_t*)calloc(RECORD_ORDER,
       sizeof(*temp_records));
 
-  uint64_t insertion_index = 0;
-  while (insertion_index < RECORD_ORDER - 1
+  int64_t insertion_index = 0;
+  while (insertion_index < (int64_t)RECORD_ORDER - 1
       && leaf->get_record(leaf, insertion_index)->key < record->key) {
     insertion_index++;
   }
 
-  uint32_t leaf_page_number_of_keys = leaf->get_number_of_keys(leaf);
+  int32_t leaf_page_number_of_keys = leaf->get_number_of_keys(leaf);
   for (i = 0, j = 0; i < leaf_page_number_of_keys; ++i, j++) {
     if (i == insertion_index) {
       j++;
@@ -576,7 +576,7 @@ bool __insert_record_after_splitting(struct __page_object * const this,
       sizeof(leaf->page.content.records));
   leaf->set_number_of_keys(leaf, 0);
 
-  uint64_t split = cut(RECORD_ORDER - 1);
+  int64_t split = cut(RECORD_ORDER - 1);
 
   for (i = 0; i < split; ++i) {
     memcpy(leaf->page.content.records[i].value,
@@ -586,7 +586,7 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   }
 
 
-  for (i = split, j = 0; i < RECORD_ORDER; ++i, j++) {
+  for (i = split, j = 0; i < (int64_t)RECORD_ORDER; ++i, j++) {
     memcpy(new_leaf.page.content.records[j].value,
         temp_records[i].value, sizeof(temp_records[i].value));
     new_leaf.page.content.records[j].key = temp_records[i].key;
@@ -604,7 +604,7 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   new_leaf.page.header.linked_page_offset =
     leaf->page.header.linked_page_offset;
 
-  uint64_t new_key = new_leaf.get_record(&new_leaf, 0)->key;
+  int64_t new_key = new_leaf.get_record(&new_leaf, 0)->key;
 
   // Write data to disk.
   leaf->write(leaf);
@@ -634,7 +634,7 @@ bool __insert_record_after_splitting(struct __page_object * const this,
  *   }
  *
  *   // Insert.
- *   uint64_t i, insertion_point = 0;
+ *   int64_t i, insertion_point = 0;
  *   // find the place to be inserted
  *   while (insertion_point < this->page.header.number_of_keys
  *       && this->page.content.key_and_offsets[insertion_point].key

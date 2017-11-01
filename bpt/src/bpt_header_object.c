@@ -3,7 +3,7 @@
 
 extern int32_t db;
 
-extern void go_to_page_number(uint64_t page_number);
+extern void go_to_page_number(int64_t page_number);
 
 static void __print_header_page(const header_object_t * const header) {
 
@@ -36,9 +36,9 @@ static void __write_header_to_db(const header_object_t * const this) {
 }
 
 static void __set__header_page(struct __header_object * const this,
-    const uint64_t free_page_offset,
-    const uint64_t root_page_offset,
-    const uint64_t number_of_pages) {
+    const int64_t free_page_offset,
+    const int64_t root_page_offset,
+    const int64_t number_of_pages) {
 
   this->page.free_page_offset = free_page_offset;
   this->page.root_page_offset = root_page_offset;
@@ -47,31 +47,31 @@ static void __set__header_page(struct __header_object * const this,
   this->write(this);
 }
 
-static uint64_t __get_free_page_offset(const struct __header_object * const this){
+static int64_t __get_free_page_offset(const struct __header_object * const this){
   return this->page.free_page_offset;
 }
 
 static void __set_free_page_offset(struct __header_object * const this,
-    uint64_t free_page_offset){
+    int64_t free_page_offset){
   this->page.free_page_offset = free_page_offset;
   this->write(this);
 }
 
-static uint64_t __get_root_page_offset(const struct __header_object * const this){
+static int64_t __get_root_page_offset(const struct __header_object * const this){
   return this->page.root_page_offset;
 }
 static void __set_root_page_offset(struct __header_object * const this,
-    uint64_t root_page_offset){
+    int64_t root_page_offset){
   this->page.root_page_offset = root_page_offset;
   this->write(this);
 }
 
-static uint64_t __get_number_of_pages(const struct __header_object * const this){
+static int64_t __get_number_of_pages(const struct __header_object * const this){
   return this->page.number_of_pages;
 }
 
 static void __set_number_of_pages(struct __header_object * const this,
-    uint64_t number_of_pages){
+    int64_t number_of_pages){
   this->page.number_of_pages = number_of_pages;
   this->write(this);
 }

@@ -7,21 +7,21 @@
 static int64_t __current_capacity = 0;
 
 // This is just a buffer
-static uint8_t __page_buffer[PAGE_SIZE];
+static int8_t __page_buffer[PAGE_SIZE];
 
 // Head. This value will be always 1.
 // Page #1 is a dummy free header. It will always be free page.
-static const uint8_t __head_page_number = 1;
-static uint64_t __tail_page_number;
+static const int8_t __head_page_number = 1;
+static int64_t __tail_page_number;
 
 
 // These variable are in bpt.c
 extern int32_t db;
-extern const uint8_t empty_page_dummy[PAGE_SIZE];
+extern const int8_t empty_page_dummy[PAGE_SIZE];
 extern header_object_t *header_page;
 
 // This function check whether the page is free page of not
-static bool __is_free_page(const uint64_t page_number) {
+static bool __is_free_page(const int64_t page_number) {
   if (page_number < 2) {
 #ifdef DBG
     fprintf(stderr, "(__is_free_page) reserved pages.");
@@ -50,7 +50,7 @@ static bool __is_free_page(const uint64_t page_number) {
   }
 
   // Read first eight byte.
-  uint64_t *next_free_page_offset = (uint64_t*)__page_buffer;
+  int64_t *next_free_page_offset = (int64_t*)__page_buffer;
 
 
   if (*next_free_page_offset == 0) {
@@ -59,9 +59,9 @@ static bool __is_free_page(const uint64_t page_number) {
     fprintf(stderr, " Page #%ld is not a free page.\n", page_number);
 #endif
     return false;
-  } else if (memcmp(&__page_buffer[sizeof(uint64_t)],
-        &empty_page_dummy[sizeof(uint64_t)],
-        PAGE_SIZE - sizeof(uint64_t)) == 0) {
+  } else if (memcmp(&__page_buffer[sizeof(int64_t)],
+        &empty_page_dummy[sizeof(int64_t)],
+        PAGE_SIZE - sizeof(int64_t)) == 0) {
     // It is free page.
 #ifdef DBG
     printf("(__is_free_page) Page #%ld is a free page.\n",
@@ -78,8 +78,8 @@ static bool __is_free_page(const uint64_t page_number) {
 
 
 // Add new free page to the tail.
-static bool __add(const uint64_t number_of_new_pages) {
-  uint64_t i, next_free_page_number;
+static bool __add(const int64_t number_of_new_pages) {
+  int64_t i, next_free_page_number;
   go_to_page_number(__tail_page_number);
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
   if (read(db, __page_buffer, PAGE_SIZE) < 0) {
@@ -99,7 +99,7 @@ static bool __add(const uint64_t number_of_new_pages) {
     assert(next_free_page_number == __tail_page_number + 1);
 
     // Wrtie next page's offset to current page
-    *(uint64_t*)__page_buffer = next_free_page_number * PAGE_SIZE;
+    *(int64_t*)__page_buffer = next_free_page_number * PAGE_SIZE;
     go_to_page_number(__tail_page_number);
     if (write(db, __page_buffer, PAGE_SIZE) < 0) {
       perror("(__add)");
@@ -129,11 +129,11 @@ static bool __add(const uint64_t number_of_new_pages) {
 }
 
 // find previous of target free page
-static uint64_t __find_prev_free_page_number_of(
-    const uint64_t free_page_number) {
+static int64_t __find_prev_free_page_number_of(
+    const int64_t free_page_number) {
 
-  uint64_t * const next_free_page_offset = (uint64_t*)__page_buffer;
-  uint64_t current_free_page_number;
+  int64_t * const next_free_page_offset = (int64_t*)__page_buffer;
+  int64_t current_free_page_number;
 
   // To read head page first, set next_free_page_offset as head free page.
   *next_free_page_offset = __head_page_number * PAGE_SIZE;
@@ -169,8 +169,8 @@ static uint64_t __find_prev_free_page_number_of(
 // ** Warning: If a page which is not in the last of db is deleted,
 //  unexpected situation will be occurred! **
 static bool __delete_free_page_in_last_of_db(
-    const uint64_t free_page_number) {
-  uint64_t prev_page_number;
+    const int64_t free_page_number) {
+  int64_t prev_page_number;
 
   if (__is_free_page(free_page_number) == false) {
 #ifdef DBG
@@ -233,8 +233,8 @@ static bool __delete_free_page_in_last_of_db(
 
 // Find the last free page
 void free_page_manager_init() {
-  uint64_t current_free_page_offset = __head_page_number * PAGE_SIZE;
-  uint64_t * const next_free_page_offset = (uint64_t*)__page_buffer;
+  int64_t current_free_page_offset = __head_page_number * PAGE_SIZE;
+  int64_t * const next_free_page_offset = (int64_t*)__page_buffer;
   assert(db >= 2);
 
   // Read dummy page
@@ -303,8 +303,8 @@ void free_page_manager_init() {
 
 
 // Return value is a first page number of free page list.
-uint64_t page_alloc(){
-  uint64_t first_page_offset;
+int64_t page_alloc(){
+  int64_t first_page_offset;
   page_header_t *page_header;
   // Invariant
   // All the time, at least one free page should exist.
@@ -325,9 +325,9 @@ uint64_t page_alloc(){
   }
 
   // at least one page should exist!
-  assert(*(uint64_t*)__page_buffer != 0);
+  assert(*(int64_t*)__page_buffer != 0);
 
-  first_page_offset = *(uint64_t*)__page_buffer;
+  first_page_offset = *(int64_t*)__page_buffer;
 
   // Reinitialize __page_buffer
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
@@ -367,7 +367,7 @@ uint64_t page_alloc(){
   return first_page_offset / PAGE_SIZE;
 }
 
-bool page_free(const uint64_t page_number){
+bool page_free(const int64_t page_number){
   // Argument page should not be a free page or empty page.
   assert(__is_free_page(page_number) == false);
 
@@ -402,7 +402,7 @@ bool page_free(const uint64_t page_number){
   // buffer clear
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
   // pointing deleted page
-  *(uint64_t*)__page_buffer = page_number * PAGE_SIZE;
+  *(int64_t*)__page_buffer = page_number * PAGE_SIZE;
 
   // Make head pointing this page
 
@@ -426,14 +426,14 @@ void free_page_clean(){
   // Generally, free pages are in the end of file.
   // Below page number indicates where the start of last free pages.
 
-  uint64_t number_of_pages = header_page->get_number_of_pages(header_page);
+  int64_t number_of_pages = header_page->get_number_of_pages(header_page);
 
   // db at least three pages.
   // Header page, Root page, Free page.
   assert(number_of_pages >= 3);
 
   // the last page
-  uint64_t reverse_free_page_iterator = number_of_pages - 1;
+  int64_t reverse_free_page_iterator = number_of_pages - 1;
 
   if (__is_free_page(reverse_free_page_iterator) == false) {
     //  If last page is not a free page,
@@ -455,13 +455,13 @@ void free_page_clean(){
     }
   }
 
-  const uint64_t last_content_page_number = reverse_free_page_iterator;
+  const int64_t last_content_page_number = reverse_free_page_iterator;
 
   // Iterate whole free page list and remove free page
   // which is following last content page.
 
-  uint64_t current_free_page = __head_page_number;
-  uint64_t *next_free_page_offset = (uint64_t*)__page_buffer;
+  int64_t current_free_page = __head_page_number;
+  int64_t *next_free_page_offset = (int64_t*)__page_buffer;
   while (1) {
     go_to_page_number(current_free_page);
     memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
@@ -489,7 +489,7 @@ void free_page_clean(){
   // Add one free page
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
   __tail_page_number = last_content_page_number + 1;
-  *(uint64_t*)__page_buffer = __tail_page_number * PAGE_SIZE;
+  *(int64_t*)__page_buffer = __tail_page_number * PAGE_SIZE;
 
   go_to_page_number(header_page->get_free_page_offset(header_page) / PAGE_SIZE);
   if (write(db, __page_buffer, PAGE_SIZE) < 0) {

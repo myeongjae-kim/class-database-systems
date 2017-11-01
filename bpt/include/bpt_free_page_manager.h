@@ -5,8 +5,8 @@
 
 void free_page_manager_init();
 
-uint64_t page_alloc();
-bool page_free(const uint64_t page_number);
+int64_t page_alloc();
+bool page_free(const int64_t page_number);
 
 void free_page_clean();
 

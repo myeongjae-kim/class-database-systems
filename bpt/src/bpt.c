@@ -28,7 +28,7 @@ header_object_t __header_object;
 header_object_t *header_page = &__header_object;
 
 // Clearing page.
-const uint8_t empty_page_dummy[PAGE_SIZE] = {0};
+const int8_t empty_page_dummy[PAGE_SIZE] = {0};
 
 
 static bool clear_resource_is_called = false;
@@ -41,7 +41,7 @@ void clear_resource(void) {
   }
 }
 
-uint64_t get_current_page_number(void) {
+int64_t get_current_page_number(void) {
   off64_t current_offset = lseek64(db, 0, SEEK_CUR);
   if (current_offset < 0) {
     perror("(get_current_page_offset)");
@@ -52,7 +52,7 @@ uint64_t get_current_page_number(void) {
 
 
 // This function change current_page_head of required page.
-void go_to_page_number(const uint64_t page_number) {
+void go_to_page_number(const int64_t page_number) {
   current_page_start_offset = lseek64(db, page_number * PAGE_SIZE, SEEK_SET);
   if (current_page_start_offset < 0) {
     perror("(go_to_page) moving file offset failed.");
@@ -66,7 +66,7 @@ void print_header_page() {
 }
 
 
-void print_page(const uint64_t page_number) {
+void print_page(const int64_t page_number) {
   page_header_t header;
 
   go_to_page_number(page_number);
@@ -143,9 +143,9 @@ void initialize_db(void) {
 // This function returns a page number
 // Get a page from free list
 // Leaf and internal page has same structure.
-/** uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
- *     const uint32_t is_leaf, const uint64_t one_more_page_number) {
- *   uint64_t new_page_number = page_alloc();
+/** int64_t leaf_or_internal_page_alloc(const int64_t parent_page_number,
+ *     const int32_t is_leaf, const int64_t one_more_page_number) {
+ *   int64_t new_page_number = page_alloc();
  *   page_header_t page_header;
  *   memset(&page_header, 0, sizeof(page_header));
  *
@@ -164,15 +164,15 @@ void initialize_db(void) {
  *
  *
  * // This is a wrapper of allocation function
- * uint64_t leaf_page_alloc(const uint64_t parent_page_number,
- *     const uint64_t right_sibling_page_number) {
+ * int64_t leaf_page_alloc(const int64_t parent_page_number,
+ *     const int64_t right_sibling_page_number) {
  *   return leaf_or_internal_page_alloc(parent_page_number,
  *       1, right_sibling_page_number);
  * }
  *
  * // This is a wrapper of allocation function
- * uint64_t internal_page_alloc(const uint64_t parent_page_number,
- *     const uint64_t one_more_page_number) {
+ * int64_t internal_page_alloc(const int64_t parent_page_number,
+ *     const int64_t one_more_page_number) {
  *   return leaf_or_internal_page_alloc(parent_page_number,
  *       0, one_more_page_number);
  * } */
@@ -182,9 +182,9 @@ void initialize_db(void) {
 
 // TODO: Not yet debugged.
 // This function finds the leaf page that a key will be stored.
-uint64_t find_leaf_page(const int key) {
-  uint32_t i = 0;
-  uint8_t page_buffer[PAGE_SIZE];
+int64_t find_leaf_page(const int key) {
+  int32_t i = 0;
+  int8_t page_buffer[PAGE_SIZE];
 
   // Get root page
   go_to_page_number(
@@ -281,7 +281,7 @@ int open_db (char *pathname){
 
 
 int insert (int64_t key, char *value){
-  uint64_t leaf_page;
+  int64_t leaf_page;
   page_object_t page;
   page_object_constructor(&page);
 #ifdef DBG
@@ -318,10 +318,10 @@ int insert (int64_t key, char *value){
 
 char find_result_buffer[VALUE_SIZE];
 char * find(int64_t key){
-  uint64_t i = 0;
+  int64_t i = 0;
   page_object_t page_buffer;
 
-  uint64_t leaf_page = find_leaf_page(key);
+  int64_t leaf_page = find_leaf_page(key);
 
   if (leaf_page == 0) {
     return NULL;
@@ -332,7 +332,7 @@ char * find(int64_t key){
   page_buffer.read(&page_buffer);
 
   for (i = 0; i < page_buffer.get_number_of_keys(&page_buffer); ++i) {
-    if (page_buffer.page.content.records[i].key == (uint64_t)key) {
+    if (page_buffer.page.content.records[i].key == (int64_t)key) {
       break;
     }
   }
@@ -349,7 +349,7 @@ char * find(int64_t key){
 
 int delete(int64_t key){
   page_object_t page_buffer;
-  uint64_t leaf_page = find_leaf_page(key);
+  int64_t leaf_page = find_leaf_page(key);
 
   if (leaf_page == 0) {
     // Key is not found

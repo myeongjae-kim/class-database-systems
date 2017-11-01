@@ -36,22 +36,22 @@ typedef struct __page_header {
   // This can be ued as:
   //  1. Next free page offset (in free page)
   //  2. Parent page offset (in leaf or internal page)
-  uint64_t linked_page_offset;
+  int64_t linked_page_offset;
   
-  uint32_t is_leaf;
-  uint32_t number_of_keys;
+  int32_t is_leaf;
+  int32_t number_of_keys;
   char dummy[HEADER_DUMMY_SIZE];
 
   // This can be used as:
   //   1. Right Sibling Page Offset (Leaf Page)
   //   2. One More Page Offset (Internal Page)
-  uint64_t one_more_page_offset;
+  int64_t one_more_page_offset;
 } page_header_t;
 
 
 #define VALUE_SIZE (128 - 8)
 typedef struct __record {
-  uint64_t key;
+  int64_t key;
   char value[VALUE_SIZE];
 } record_t;
 
@@ -59,7 +59,7 @@ typedef struct __record {
 // This type is used in internal page
 typedef struct __internal_page_element {
   int64_t key;
-  uint64_t page_offset;
+  int64_t page_offset;
 } internal_page_element_t;
 
 
@@ -87,7 +87,7 @@ typedef struct __internal_page {
 
 // Below type will not be used.
 /* typedef struct __free_page {
- *   uint64_t next_free_page_offset;
+ *   int64_t next_free_page_offset;
  * } free_page_t; */
 
 
@@ -120,16 +120,16 @@ int delete (int64_t key);
 void close_db(void);
 
 /* This function returns the number of current page  */
-uint64_t get_current_page_number(void);
+int64_t get_current_page_number(void);
 
 /* This function moves file offset to target page */
-void go_to_page_number(const uint64_t page_number);
+void go_to_page_number(const int64_t page_number);
 
 /* This function prints haeder page */
 void print_header_page(void);
 
 /* This function prints a content of page including header */
-void print_page(const uint64_t page_number);
+void print_page(const int64_t page_number);
 
 /* This function writes a header.
  * It checks whether current position is header or not. */
@@ -144,19 +144,19 @@ void initialize_db(void);
 
 // This function returns a page number
 // Get a page from free list
-uint64_t leaf_or_internal_page_alloc(const uint64_t parent_page_number,
-    const uint32_t is_leaf, const uint64_t one_more_page_number);
+int64_t leaf_or_internal_page_alloc(const int64_t parent_page_number,
+    const int32_t is_leaf, const int64_t one_more_page_number);
 
 
 // This function returns a page number
 // Get a page from free list
-uint64_t leaf_page_alloc(const uint64_t parent_page_number,
-    const uint64_t right_sibling_page_number);
+int64_t leaf_page_alloc(const int64_t parent_page_number,
+    const int64_t right_sibling_page_number);
 
 // This function returns a page number
 // Get a page from free list
-uint64_t internal_page_alloc(const uint64_t parent_page_number,
-    const uint64_t one_more_page_number);
+int64_t internal_page_alloc(const int64_t parent_page_number,
+    const int64_t one_more_page_number);
 
 
 #endif

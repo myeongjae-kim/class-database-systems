@@ -3,9 +3,9 @@
 
 // It is a structure of header page.
 typedef struct __header_page {
-  uint64_t free_page_offset;
-  uint64_t root_page_offset;
-  uint64_t number_of_pages;
+  int64_t free_page_offset;
+  int64_t root_page_offset;
+  int64_t number_of_pages;
 } header_page_t;
 
 
@@ -20,22 +20,22 @@ typedef struct __header_object {
   void (*print)(const struct __header_object * const);
 
   void (*set)(struct __header_object * const,
-      const uint64_t free_page_offset,
-      const uint64_t root_page_offset,
-      const uint64_t number_of_pages);
+      const int64_t free_page_offset,
+      const int64_t root_page_offset,
+      const int64_t number_of_pages);
 
 
-  uint64_t (*get_free_page_offset)(const struct __header_object * const);
+  int64_t (*get_free_page_offset)(const struct __header_object * const);
   void (*set_free_page_offset)(struct __header_object * const,
-      uint64_t free_page_offset);
+      int64_t free_page_offset);
 
-  uint64_t (*get_root_page_offset)(const struct __header_object * const);
+  int64_t (*get_root_page_offset)(const struct __header_object * const);
   void (*set_root_page_offset)(struct __header_object * const,
-      uint64_t root_page_offset);
+      int64_t root_page_offset);
 
-  uint64_t (*get_number_of_pages)(const struct __header_object * const);
+  int64_t (*get_number_of_pages)(const struct __header_object * const);
   void (*set_number_of_pages)(struct __header_object * const,
-      uint64_t number_of_pages);
+      int64_t number_of_pages);
 
 } header_object_t;
 

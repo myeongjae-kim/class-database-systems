@@ -20,7 +20,7 @@ extern header_object_t *header_page;
 extern int32_t db;
 // Delete end
 
-void print_page(uint64_t page_number);
+void print_page(int64_t page_number);
 void print_header_page();
 
 #ifdef DBG
@@ -87,7 +87,7 @@ int main(void)
   char command_input[256];
   char* input_iterator, *find_result;
   int64_t key;
-  uint32_t i;
+  int32_t i;
   bool open_is_called = false;
 
   
@@ -198,7 +198,7 @@ int main(void)
         input_iterator++;
 
         // Parse 
-        for (i = 0; i < sizeof(command_input); ++i) {
+        for (i = 0; i < (int64_t)sizeof(command_input); ++i) {
           if (input_iterator[i] == ' ') {
             break;
           }
