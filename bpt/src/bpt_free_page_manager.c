@@ -120,6 +120,7 @@ static bool __add(const int64_t number_of_new_pages) {
 #endif
   }
 
+  header_page->write(header_page);
 
 #ifdef DBG
   printf("(__add) %ld free pages are added.\n", number_of_new_pages);
@@ -219,6 +220,7 @@ static bool __delete_free_page_in_last_of_db(
   __current_capacity--;
   assert(__current_capacity >= 0);
 
+  header_page->write(header_page);
 #ifdef DBG
   printf("(__delete_free_page_in_last_of_db) Free page #%ld is deleted.\n",
       free_page_number);
@@ -263,6 +265,7 @@ void free_page_manager_init() {
 
     header_page->set_number_of_pages(header_page,
         header_page->get_number_of_pages(header_page) + 1);
+    header_page->write(header_page);
   }
 
   // Interate list to find last free page
@@ -499,6 +502,7 @@ void free_page_clean(){
   }
   __current_capacity++;
   header_page->set_number_of_pages(header_page, __tail_page_number + 1);
+  header_page->write(header_page);
 
   //  Truncate file
   // Below function removes last free page from the DB,

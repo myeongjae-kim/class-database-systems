@@ -123,6 +123,7 @@ void initialize_db(void) {
 
   // Free page offset, Root page offset, number of pages.
   header_page->set(header_page, 1 * PAGE_SIZE, 2 * PAGE_SIZE, 3);
+  header_page->write(header_page);
 
   // Go to root page
   go_to_page_number(2);

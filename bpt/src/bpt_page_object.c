@@ -268,6 +268,7 @@ bool __insert_into_new_root(
   // write root offset to header page
   header_page->set_root_page_offset(header_page,
       root_page_number * PAGE_SIZE);
+  header_page->write(header_page);
 
   return true;
 }
