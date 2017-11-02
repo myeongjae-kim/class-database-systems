@@ -25,19 +25,19 @@ void print_header_page();
 
 
 void testing(void) {
-  printf("(testing)\n");
-  char* ptr;
-
-  int32_t i;
-  for (i = 1; i <= 1000000; ++i) {
-    if ((ptr = find(i)) == NULL) {
-      fprintf(stderr, "key %d is not found\n", i);
-      exit(1);
-    }
-    printf("\r%s                               ", ptr);
-  }
-  printf("                                      \n");
-
+/**   printf("(testing)\n");
+  *   char* ptr;
+  *
+  *   int32_t i;
+  *   for (i = 1; i <= 1000000; ++i) {
+  *     if ((ptr = find(i)) == NULL) {
+  *       fprintf(stderr, "key %d is not found\n", i);
+  *       exit(1);
+  *     }
+  *     printf("\r%s                               ", ptr);
+  *   }
+  *   printf("                                      \n"); */
+  print_all();
 }
 
 

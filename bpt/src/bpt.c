@@ -57,6 +57,50 @@ void go_to_page_number(const int64_t page_number) {
   }
 }
 
+void print_all() {
+  page_object_t page_buffer;
+  page_object_constructor(&page_buffer);
+  page_buffer.set_current_page_number(&page_buffer,
+      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+  page_buffer.read(&page_buffer);
+
+  while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
+    assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE);
+
+    page_buffer.set_current_page_number(&page_buffer,
+        page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+    page_buffer.read(&page_buffer);
+  }
+
+  // Leaf is found.
+  int64_t i;
+
+  int64_t temp_key_correctness = 1;
+
+  while(1){
+    assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
+    for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) {
+
+      if (page_buffer.page.content.records[i].key != temp_key_correctness) {
+        assert(false);
+      }
+
+      printf("[page #%ld] key:%ld, value:%s\n",
+          page_buffer.get_current_page_number(&page_buffer),
+          page_buffer.page.content.records[i].key,
+          page_buffer.page.content.records[i].value);
+
+      temp_key_correctness++;
+    }
+    if (page_buffer.page.header.one_more_page_offset != 0) {
+      page_buffer.set_current_page_number(&page_buffer,
+          page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+      page_buffer.read(&page_buffer);
+    } else {
+      break;
+    }
+  }
+}
 
 void print_header_page() {
   header_page->print(header_page);
@@ -282,7 +326,7 @@ int open_db (char *pathname){
 }
 
 
-int insert (int64_t key, char *value){
+int insert(int64_t key, char *value){
   int64_t leaf_page;
   page_object_t page;
   page_object_constructor(&page);

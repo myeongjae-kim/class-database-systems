@@ -594,6 +594,11 @@ bool __insert_record_after_splitting(struct __page_object * const this,
 
   free(temp_records);
 
+  // get link from old
+  new_leaf.page.header.one_more_page_offset =
+    leaf->page.header.one_more_page_offset;
+
+
   // link page from old to new
   leaf->page.header.one_more_page_offset =
     new_leaf.get_current_page_number(&new_leaf) * PAGE_SIZE;
@@ -683,13 +688,18 @@ void __remove_record_from_page(struct __page_object * const this,
 
   // Remove redundancy
   // i-1 is last key idex
-  if (1 < i && i <= this->page.header.number_of_keys) {
-    assert(memcmp(&this->page.content.records[i-1],
-          &this->page.content.records[i-2],
-          sizeof(this->page.content.records[i-1])) == 0);
-    memset(&this->page.content.records[i-1], 0,
-        sizeof(this->page.content.records[i-1]));
-  }
+  // If no compaction, no redundancy is exist.
+  /** if (1 < i && i < this->page.header.number_of_keys) {
+    *   assert(memcmp(&this->page.content.records[i-1],
+    *         &this->page.content.records[i-2],
+    *         sizeof(this->page.content.records[i-1])) == 0);
+    *   memset(&this->page.content.records[i-1], 0,
+    *       sizeof(this->page.content.records[i-1]));
+    * } */
+
+  // Remove redundancy
+  memset(&this->page.content.records[i-1], 0,
+      sizeof(this->page.content.records[i-1]));
 
   // One key fewer
   this->page.header.number_of_keys--;
@@ -811,13 +821,19 @@ void  __remove_key_and_offset_from_page(struct __page_object * const this,
 
   // Remove redundancy
   // i-1 is last key idex
-  if (1 < i && i < this->page.header.number_of_keys) {
-    assert(memcmp(&this->page.content.key_and_offsets[i-1],
-          &this->page.content.key_and_offsets[i-2],
-          sizeof(this->page.content.key_and_offsets[i-1])) == 0);
+  /** if (1 < i && i < this->page.header.number_of_keys) {
+    *   assert(memcmp(&this->page.content.key_and_offsets[i-1],
+    *         &this->page.content.key_and_offsets[i-2],
+    *         sizeof(this->page.content.key_and_offsets[i-1])) == 0);
+    *   memset(&this->page.content.key_and_offsets[i-1], 0,
+    *       sizeof(this->page.content.key_and_offsets[i-1]));
+    * } */
+
+
+  // Remove redundancy
     memset(&this->page.content.key_and_offsets[i-1], 0,
         sizeof(this->page.content.key_and_offsets[i-1]));
-  }
+
 
   // One key fewer
   this->page.header.number_of_keys--;
@@ -1103,6 +1119,7 @@ bool __coalesce_leaves(struct __page_object * this,
         == header_page->get_root_page_offset(header_page));
 
     // Remove root
+    // TODO
     if(page_free(parent.get_current_page_number(&parent))
         == false) {
       fprintf(stderr, "(__coalesce_leaves) page_free() failed.\n");
@@ -1114,6 +1131,7 @@ bool __coalesce_leaves(struct __page_object * this,
     header_page->set_root_page_offset(header_page,
         this->get_current_page_number(this) * PAGE_SIZE);
     this->page.header.linked_page_offset = 0;
+    this->write(this);
   }
 
   return result;

@@ -123,5 +123,6 @@ void write_page_header(const page_header_t * const header);
 void initialize_db(void);
 
 
+void print_all(void);
 
 #endif
