@@ -5,3 +5,5 @@ database
 ref
 input*
 output
+main
+lib/*.a
