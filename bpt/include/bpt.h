@@ -2,7 +2,7 @@
  * Author    : Kim, Myeong Jae
  * Due Date  : 2017-11-5
  *
- * This is a header file of disk-based b+tree
+ * This is a header file of disk-based b+tree.
  * The interface this data structure provide is below. */
 
 
@@ -140,25 +140,6 @@ void write_page_header(const page_header_t * const header);
 /* Intilizing database */
 void initialize_db(void);
 
-
-
-//TODO: Implement
-
-// This function returns a page number
-// Get a page from free list
-int64_t leaf_or_internal_page_alloc(const int64_t parent_page_number,
-    const int32_t is_leaf, const int64_t one_more_page_number);
-
-
-// This function returns a page number
-// Get a page from free list
-int64_t leaf_page_alloc(const int64_t parent_page_number,
-    const int64_t right_sibling_page_number);
-
-// This function returns a page number
-// Get a page from free list
-int64_t internal_page_alloc(const int64_t parent_page_number,
-    const int64_t one_more_page_number);
 
 
 #endif

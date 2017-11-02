@@ -1,3 +1,7 @@
+/* File Name : bpt_page_object.h
+ * Author    : Kim, Myeong Jae
+ * Due Date  : 2017-11-5 */
+
 #ifndef __BPT_PAGE_OBJECT_H__
 #define __BPT_PAGE_OBJECT_H__
 

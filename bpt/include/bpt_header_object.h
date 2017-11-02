@@ -1,3 +1,7 @@
+/* File Name : bpt_header_object.h
+ * Author    : Kim, Myeong Jae
+ * Due Date  : 2017-11-5 */
+
 #ifndef __BPT_HEADER_OBJECT_H__
 #define __BPT_HEADER_OBJECT_H__
 
