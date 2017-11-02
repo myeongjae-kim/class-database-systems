@@ -788,6 +788,14 @@ void __get_k_prime_index_and_its_value(
     }
   }
 
+  // When neighbor is in left, increase k_prime_index by 1
+  if (this->page.header.one_more_page_offset == 0) {
+    i++;
+    *k_prime_index = i;
+    *k_prime = parent_page->page.content.key_and_offsets[i].key;
+  }
+
+
   // neighbor page must exist!
   assert(i != parent_page->page.header.number_of_keys);
 }

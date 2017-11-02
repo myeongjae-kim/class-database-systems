@@ -75,22 +75,14 @@ void print_all() {
   // Leaf is found.
   int64_t i;
 
-  int64_t temp_key_correctness = 1;
-
   while(1){
     assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
     for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) {
-
-      if (page_buffer.page.content.records[i].key != temp_key_correctness) {
-        assert(false);
-      }
 
       printf("[page #%ld] key:%ld, value:%s\n",
           page_buffer.get_current_page_number(&page_buffer),
           page_buffer.page.content.records[i].key,
           page_buffer.page.content.records[i].value);
-
-      temp_key_correctness++;
     }
     if (page_buffer.page.header.one_more_page_offset != 0) {
       page_buffer.set_current_page_number(&page_buffer,
