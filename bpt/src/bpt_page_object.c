@@ -683,7 +683,7 @@ void __remove_record_from_page(struct __page_object * const this,
 
   // Remove redundancy
   // i-1 is last key idex
-  if (1 < i && i < this->page.header.number_of_keys) {
+  if (1 < i && i <= this->page.header.number_of_keys) {
     assert(memcmp(&this->page.content.records[i-1],
           &this->page.content.records[i-2],
           sizeof(this->page.content.records[i-1])) == 0);
@@ -1096,7 +1096,8 @@ bool __coalesce_leaves(struct __page_object * this,
     exit(1);
   }
 
-  if (parent.get_number_of_keys(&parent) == 1) {
+  /** if (parent.get_number_of_keys(&parent) == 1) { */
+  if (parent.get_number_of_keys(&parent) == 0) {
     // It is occurred only in root
     assert(parent.get_current_page_number(&parent) * PAGE_SIZE
         == header_page->get_root_page_offset(header_page));
