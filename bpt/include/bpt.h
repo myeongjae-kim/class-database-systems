@@ -31,6 +31,15 @@
 
 // Generally, 'offset' means 'page number * PAGE_SIZE'
 
+#define RECORD_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
+    / sizeof(record_t))
+#define RECORD_ORDER (RECORD_PER_PAGE + 1)
+
+#define OFFSETS_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
+    / sizeof(internal_page_element_t))
+#define OFFSET_ORDER (OFFSETS_PER_PAGE + 1)
+
+
 /* page header and record */
 #define HEADER_DUMMY_SIZE (120 - (8 + 4 + 4))
 // The size of page_header_t is 128 byte.
@@ -65,33 +74,6 @@ typedef struct __internal_page_element {
 } internal_page_element_t;
 
 
-/****** Pages ******/
-
-
-#define RECORD_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
-    / sizeof(record_t))
-#define RECORD_ORDER (RECORD_PER_PAGE + 1)
-typedef struct __leaf_page {
-  page_header_t header;
-  record_t records[RECORD_PER_PAGE];
-} leaf_page_t;
-
-#define OFFSETS_PER_PAGE ((PAGE_SIZE - sizeof(page_header_t))\
-    / sizeof(internal_page_element_t))
-#define OFFSET_ORDER (OFFSETS_PER_PAGE + 1)
-typedef struct __internal_page {
-  page_header_t header;
-  internal_page_element_t offsets[OFFSETS_PER_PAGE];
-} internal_page_t;
-
-
-
-
-// Below type will not be used.
-/* typedef struct __free_page {
- *   int64_t next_free_page_offset;
- * } free_page_t; */
-
 
 /*** Interface ***/
 
@@ -113,7 +95,7 @@ int delete (int64_t key);
 
 /** Internal Functions
  * These functions are only used in bpt.c
- * Below declarations will be commenterized.
+ * Below declarations will be deleted in the end.
  * **/
 
 /** Utility functions **/

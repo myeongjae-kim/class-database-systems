@@ -49,14 +49,8 @@ void parameter_check(void) {
   printf("record_per_page: %ld\n", RECORD_PER_PAGE);
   assert(RECORD_PER_PAGE + 1 == 32);
 
-  printf("leaf_page size: %ld\n", sizeof(leaf_page_t));
-  assert(sizeof(leaf_page_t) == 4096);
-
   printf("offsets_per_page: %ld\n", OFFSETS_PER_PAGE);
   assert(OFFSETS_PER_PAGE + 1 == 249);
-
-  printf("iternal_page_size: %ld\n", sizeof(internal_page_t));
-  assert(sizeof(internal_page_t) == 4096);
 
   printf("page_t size: %ld\n", sizeof(struct __page));
   assert(sizeof(struct __page) == 4096);
