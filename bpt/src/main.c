@@ -23,6 +23,24 @@ extern int32_t db;
 void print_page(int64_t page_number);
 void print_header_page();
 
+
+void testing(void) {
+  printf("(testing)\n");
+  char* ptr;
+
+  int32_t i;
+  for (i = 1; i <= 1000000; ++i) {
+    if ((ptr = find(i)) == NULL) {
+      fprintf(stderr, "key %d is not found\n", i);
+      exit(1);
+    }
+    printf("\r%s                               ", ptr);
+  }
+  printf("                                      \n");
+
+}
+
+
 #ifdef DBG
 void parameter_check(void) {
   printf("page_header_size: %ld\n", sizeof(page_header_t));
@@ -47,21 +65,6 @@ void parameter_check(void) {
   printf("(parameter_check) parameter checking is successful.\n");
 }
 #endif
-
-void testing(void) {
-  printf("(testing)\n");
-  char* ptr;
-
-  int32_t i;
-  for (i = 1; i <= 100000; ++i) {
-    if ((ptr = find(i)) == NULL) {
-      fprintf(stderr, "key %d is not found\n", i);
-      exit(1);
-    }
-    printf("%s\n", ptr);
-  }
-
-}
 
 enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST};
 
@@ -90,10 +93,29 @@ int main(void)
   int32_t i;
   bool open_is_called = false;
 
+#ifdef fsync
+  putchar('\n');
+  printf("*******************************************************\n");
+  printf("*******************************************************\n");
+  printf("*********************  Warning!!  *********************\n");
+  printf("** Remove #define fsync(x) to make DB unbuffered I/O **\n");
+  printf("*******************************************************\n");
+  printf("*******************************************************\n");
+  putchar('\n');
+#endif
   
 #ifdef DBG
   parameter_check();
 #endif
+
+#ifndef fsync
+  // Make standard I/O Unbuffered.
+  setvbuf(stdout, NULL, _IONBF, 0);
+  setvbuf(stdin, NULL, _IONBF, 0);
+#endif
+
+  // initializing buffer.
+  memset(command_input, 0 , sizeof(command_input));
 
   // Open database first
   printf("> ");
@@ -212,17 +234,22 @@ int main(void)
           printf("(insert) key conversion to integer is failed.\n");
           printf("(insert) Usage > insert <key> <value>\n");
           break;
-        } else if (input_iterator == NULL) {
+        } else if(input_iterator == NULL
+            ||*input_iterator == ' '
+            || *input_iterator == '\0') {
           printf("(insert) <value> does not exist.\n");
           printf("(insert) Usage > insert <key> <value>\n");
           break;
-        }
-
+        } 
 
 #ifdef DBG
         printf("key: %ld, value: %s\n", key, input_iterator);
 #endif
-        insert(key, input_iterator);
+
+        // Insert only if key is not exist.
+        if (find(key) == NULL) {
+          insert(key, input_iterator);
+        }
 
 
         break;
@@ -272,7 +299,12 @@ int main(void)
 #ifdef DBG
         printf("key: %ld\n", key);
 #endif
-        // call delete(key);
+
+        if ((find_result = find(key)) != NULL) {
+          delete(key);
+          printf("(delete)[key: %ld, value: %s] is deleted.\n"
+              ,key , find_result);
+        }
 
         break;
 

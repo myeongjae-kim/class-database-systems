@@ -31,14 +31,11 @@ header_object_t *header_page = &__header_object;
 const int8_t empty_page_dummy[PAGE_SIZE] = {0};
 
 
-static bool clear_resource_is_called = false;
+static bool clear_resource_is_registered = false;
 
 void clear_resource(void) {
-  if (clear_resource_is_called == false) {
-    free_page_clean();
-    close(db);
-    clear_resource_is_called = true;
-  }
+  free_page_clean();
+  close(db);
 }
 
 int64_t get_current_page_number(void) {
@@ -101,6 +98,7 @@ void write_page_header(const page_header_t * const header) {
     perror("(write_page_header)");
     exit(1);
   }
+  fsync(db);
 }
 
 
@@ -270,7 +268,10 @@ int open_db (char *pathname){
   }
 
   // Register file closing function to prevent memory leakage.
-  atexit(clear_resource);
+  if (clear_resource_is_registered == false) {
+    atexit(clear_resource);
+    clear_resource_is_registered = true;
+  }
 
   // Read header
   header_page->read(header_page);

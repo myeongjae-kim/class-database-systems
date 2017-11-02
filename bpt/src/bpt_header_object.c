@@ -1,4 +1,3 @@
-#include "bpt.h"
 #include "bpt_header_object.h"
 
 extern int32_t db;
@@ -33,6 +32,7 @@ static void __write_header_to_db(const header_object_t * const this) {
     perror("(header_object_t.write_to_db)");
     exit(1);
   }
+  fsync(db);
 }
 
 static void __set__header_page(struct __header_object * const this,
@@ -44,7 +44,7 @@ static void __set__header_page(struct __header_object * const this,
   this->page.root_page_offset = root_page_offset;
   this->page.number_of_pages = number_of_pages;
 
-  this->write(this);
+  /** this->write(this); */
 }
 
 static int64_t __get_free_page_offset(const struct __header_object * const this){
@@ -54,7 +54,7 @@ static int64_t __get_free_page_offset(const struct __header_object * const this)
 static void __set_free_page_offset(struct __header_object * const this,
     int64_t free_page_offset){
   this->page.free_page_offset = free_page_offset;
-  this->write(this);
+  /** this->write(this); */
 }
 
 static int64_t __get_root_page_offset(const struct __header_object * const this){
@@ -63,7 +63,7 @@ static int64_t __get_root_page_offset(const struct __header_object * const this)
 static void __set_root_page_offset(struct __header_object * const this,
     int64_t root_page_offset){
   this->page.root_page_offset = root_page_offset;
-  this->write(this);
+  /** this->write(this); */
 }
 
 static int64_t __get_number_of_pages(const struct __header_object * const this){
@@ -73,7 +73,7 @@ static int64_t __get_number_of_pages(const struct __header_object * const this){
 static void __set_number_of_pages(struct __header_object * const this,
     int64_t number_of_pages){
   this->page.number_of_pages = number_of_pages;
-  this->write(this);
+  /** this->write(this); */
 }
 
 

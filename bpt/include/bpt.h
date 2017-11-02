@@ -12,6 +12,8 @@
 // Allow system to handle a file which is bigger than 4GB
 #define _LARGEFILE64_SOURCE
 
+// If fsync(x); is defined, DB will work as buffered I/O
+#define fsync(x);
 
 #include <stdint.h>
 #include <stdio.h>

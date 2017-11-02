@@ -106,6 +106,7 @@ static bool __add(const int64_t number_of_new_pages) {
       assert(false);
       exit(1);
     }
+    fsync(db);
 
     // Increase number of pages
     header_page->set_number_of_pages(header_page, next_free_page_number + 1);
@@ -203,6 +204,7 @@ static bool __delete_free_page_in_last_of_db(
     assert(false);
     exit(1);
   }
+  fsync(db);
 
   // clear deleted page
   go_to_page_number(free_page_number);
@@ -211,6 +213,7 @@ static bool __delete_free_page_in_last_of_db(
     assert(false);
     exit(1);
   }
+  fsync(db);
 
   // Decrease the number of pages.
   header_page->set_number_of_pages(header_page,
@@ -262,6 +265,7 @@ void free_page_manager_init() {
       assert(false);
       exit(1);
     }
+    fsync(db);
 
     header_page->set_number_of_pages(header_page,
         header_page->get_number_of_pages(header_page) + 1);
@@ -351,6 +355,7 @@ int64_t page_alloc(){
     assert(false);
     exit(1);
   }
+  fsync(db);
 
   __current_capacity--;
   assert(__current_capacity > 0);
@@ -366,6 +371,7 @@ int64_t page_alloc(){
     assert(false);
     exit(1);
   }
+  fsync(db);
 
   return first_page_offset / PAGE_SIZE;
 }
@@ -401,6 +407,7 @@ bool page_free(const int64_t page_number){
     assert(false);
     exit(1);
   }
+  fsync(db);
 
   // buffer clear
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
@@ -415,6 +422,7 @@ bool page_free(const int64_t page_number){
     assert(false);
     exit(1);
   }
+  fsync(db);
   __current_capacity++;
 
   return true;
@@ -500,6 +508,7 @@ void free_page_clean(){
     assert(false);
     exit(1);
   }
+  fsync(db);
   __current_capacity++;
   header_page->set_number_of_pages(header_page, __tail_page_number + 1);
   header_page->write(header_page);

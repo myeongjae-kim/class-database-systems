@@ -1,6 +1,8 @@
 #ifndef __BPT_HEADER_OBJECT_H__
 #define __BPT_HEADER_OBJECT_H__
 
+#include "bpt.h"
+
 // It is a structure of header page.
 typedef struct __header_page {
   int64_t free_page_offset;
