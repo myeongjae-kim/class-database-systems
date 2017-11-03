@@ -58,6 +58,10 @@ void parameter_check(void) {
 
   printf("(parameter_check) parameter checking is successful.\n");
 }
+
+bool *debug_vector;
+int64_t debug_vector_size;
+int64_t debug_vector_max_idx = 1;
 #endif
 
 enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST};
@@ -100,6 +104,10 @@ int main(void)
   
 #ifdef DBG
   parameter_check();
+
+  debug_vector_size = 10000;
+  debug_vector = calloc(debug_vector_size, sizeof(*debug_vector));
+  debug_vector_max_idx = 0;
 #endif
 
 #ifndef fsync
@@ -240,10 +248,14 @@ int main(void)
         printf("key: %ld, value: %s\n", key, input_iterator);
 #endif
 
+#ifdef DBG
         // Insert only if key is not exist.
         if (find(key) == NULL) {
           insert(key, input_iterator);
+
+          debug_vector_max_idx++;
         }
+#endif
 
 
         break;
@@ -298,6 +310,18 @@ int main(void)
           delete(key);
           printf("(delete)[key: %ld, value: %s] is deleted.\n"
               ,key , find_result);
+
+#ifdef DBG
+          /** debug_vector[key] = true;
+            * for (i = 1; i < debug_vector_max_idx; ++i) {
+            *   if (debug_vector[i] == false) {
+            *     if (find(i) == NULL) {
+            *       printf("!! key: %d is lost!\n", i);
+            *       assert(false);
+            *     }
+            *   }
+            * } */
+#endif
         }
 
         break;
@@ -321,6 +345,11 @@ int main(void)
 
     printf("> ");
   };
+
+
+#ifdef DBG
+  free(debug_vector);
+#endif
 
   return 0;
 }
