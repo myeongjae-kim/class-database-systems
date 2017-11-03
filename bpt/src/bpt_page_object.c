@@ -981,6 +981,168 @@ bool __coalesce_nodes(struct __page_object * this,
 
 }
 
+bool __redistribute_nodes(struct __page_object * this,
+    struct __page_object * neighbor_page, const bool neighbor_is_right,
+    const int64_t k_prime_index, const int64_t k_prime) {
+
+  assert(this->get_type(this) == INTERNAL_PAGE
+      && neighbor_page->get_type(neighbor_page) == INTERNAL_PAGE);
+
+  // Normal situations: 'this' is left. 'neighbor_page' is right.
+  bool move_key_and_offset_from_neighbor_to_this = neighbor_is_right;
+
+  // If 'neighbor_page' is left and 'this' is right, swap.
+  // (When 'this' is the rightmost page in a node
+  if (move_key_and_offset_from_neighbor_to_this == false) {
+    // Extra situation
+    // Make this situation normal
+    struct __page_object * temp = this;
+    this = neighbor_page;
+    neighbor_page = temp;
+
+    // In current extra situation (when neighbor is left)
+    //  key and offsets are moved from this to neighbor
+  }
+
+
+  // Get parent page.
+
+  assert(this->page.header.linked_page_offset
+      == neighbor_page->page.header.linked_page_offset);
+  struct __page_object parent;
+  page_object_constructor(&parent);
+
+  parent.set_current_page_number(&parent,
+      this->page.header.linked_page_offset / PAGE_SIZE);
+  parent.read(&parent);
+
+
+  // Now, 'neighbor_page' is the right sibling of 'this'
+  // Redistribute!
+  
+  if (move_key_and_offset_from_neighbor_to_this) {
+    // Move this's last record to neighbor_page
+    // Change k_prime in parent to new key.
+
+    // Copy last record to temp
+    internal_page_element_t temp_key_and_offset;
+    temp_key_and_offset.key = k_prime;
+    temp_key_and_offset.page_offset =
+      neighbor_page->page.header.one_more_page_offset;
+
+    // set new k_prime
+    // new key must be bigger than old key
+    assert(parent.page.content.key_and_offsets[k_prime_index].key
+        < neighbor_page->page.content.key_and_offsets[0].key);
+    // k_prime value is okay?
+    // TODO: below assertion can be removed.
+    // TODO: argument k_prime can be removed.
+    assert(parent.page.content.key_and_offsets[k_prime_index].key
+        == k_prime);
+
+    parent.page.content.key_and_offsets[k_prime_index].key
+      = neighbor_page->page.content.key_and_offsets[0].key;
+
+    // Should we change the grand parent's k_prime?
+    // No. grand parent's k_prime is a first key of 'this'.
+    // We don't need to care about it.
+
+    // remove neighbor's one_more_page_offset and compaction
+    neighbor_page->page.header.one_more_page_offset = 
+      neighbor_page->page.content.key_and_offsets[0].page_offset;
+
+    int64_t i;
+    int64_t n_of_key_in_neighbor = neighbor_page->page.header.number_of_keys;
+    for (i = 1; i < n_of_key_in_neighbor; ++i) {
+      memcpy(&neighbor_page->page.content.key_and_offsets[i-1],
+          &neighbor_page->page.content.key_and_offsets[i],
+          sizeof(neighbor_page->page.content.key_and_offsets[i-1]));
+    }
+
+    memset(&neighbor_page->page.content.key_and_offsets[n_of_key_in_neighbor - 1], 0,
+        sizeof(neighbor_page->page.content.key_and_offsets[n_of_key_in_neighbor - 1]));
+    neighbor_page->page.header.number_of_keys--;
+
+
+    // set new record
+    this->set_key_and_offset(this, 
+        this->page.header.number_of_keys, &temp_key_and_offset);
+
+    // increae num_of_key of this
+    this->page.header.number_of_keys++;
+
+
+  } else {
+    // Move this's last record to neighbor_page
+    // Change k_prime in parent to new key.
+
+    // Copy last record to temp
+    internal_page_element_t temp_key_and_offset;
+    int64_t last_key_and_offset_of_this = this->page.header.number_of_keys - 1;
+    memcpy(&temp_key_and_offset,
+        &this->page.content.key_and_offsets[last_key_and_offset_of_this],
+        sizeof(temp_key_and_offset));
+
+    // remove this's last record
+    // TODO: Guarantee that number_of_keys of this is bigger than d.
+    this->page.header.number_of_keys--;
+    memset(&this->page.content.key_and_offsets[last_key_and_offset_of_this], 0,
+        sizeof(this->page.content.key_and_offsets[last_key_and_offset_of_this]));
+
+
+    // Add key and offsets to neighbor.
+    // make a space. New record's idx must be zero.
+    int64_t i;
+    for (i = neighbor_page->page.header.number_of_keys; i > 0; --i) {
+      memcpy(&neighbor_page->page.content.key_and_offsets[i],
+          &neighbor_page->page.content.key_and_offsets[i-1],
+          sizeof(neighbor_page->page.content.key_and_offsets[i]));
+    }
+    // clear first record.
+    memset(&neighbor_page->page.content.key_and_offsets[0], 0,
+        sizeof(neighbor_page->page.content.key_and_offsets[0]));
+
+
+
+    // Set new key and offset.
+    neighbor_page->page.content.key_and_offsets[0].key =
+      parent.page.content.key_and_offsets[k_prime_index].key;
+    neighbor_page->page.content.key_and_offsets[0].page_offset =
+      neighbor_page->page.header.one_more_page_offset;
+
+    neighbor_page->page.header.one_more_page_offset = 
+      temp_key_and_offset.page_offset;
+
+    // increae num_of_key
+    neighbor_page->page.header.number_of_keys++;
+
+
+    // set new k_prime
+    // new key must be smaller than old key
+    assert(parent.page.content.key_and_offsets[k_prime_index].key
+        > temp_key_and_offset.key);
+    // k_prime value is okay?
+    // TODO: below assertion can be removed.
+    // TODO: argument k_prime can be removed.
+    assert(parent.page.content.key_and_offsets[k_prime_index].key
+        == k_prime);
+
+    parent.page.content.key_and_offsets[k_prime_index].key
+      = temp_key_and_offset.key;
+
+
+
+    }
+
+  // Write to disk
+  this->write(this);
+  neighbor_page->write(neighbor_page);
+  parent.write(&parent);
+
+  return true;
+
+
+}
 
 bool __delete_key_and_offset_of_key(struct __page_object * const this,
     const int64_t key){
@@ -1069,20 +1231,21 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
   /* Coalescence. */
 
-  if (neighbor.get_number_of_keys(&neighbor)
+  // Below 1 is the one_more_page_offset of neighbor
+  if (1 + neighbor.get_number_of_keys(&neighbor)
       + this->get_number_of_keys(this) < capacity){
     return __coalesce_nodes(this, &neighbor, neighbor_is_right, k_prime);
   }
 
   /* Redistribution. */
   else {
-    /** return __redistribute_nodes(this, &neighbor, neighbor_is_right, */
-    /**     k_prime_index, k_prime); */
-    assert(false);
+    return __redistribute_nodes(this, &neighbor, neighbor_is_right,
+        k_prime_index, k_prime);
   }
 
 
 }
+
 
 
 bool __coalesce_leaves(struct __page_object * this,
