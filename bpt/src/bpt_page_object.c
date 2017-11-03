@@ -1156,6 +1156,107 @@ bool __redistribute_nodes(struct __page_object * this,
 
 }
 
+
+bool __coalesce_nodes_when_parent_is_root(
+    struct __page_object * this, 
+    struct __page_object * const parent,
+    struct __page_object * neighbor,
+    bool neighbor_is_right) {
+
+  // Here, only special case.
+  assert(this->page.header.linked_page_offset
+      == neighbor->page.header.linked_page_offset);
+  assert(this->page.header.linked_page_offset
+      == parent->current_page_number * PAGE_SIZE);
+
+  // Please...
+
+  // coalesce this and neighbor.
+  // 'this' will be a new root.
+
+
+  /* Swap neighbor with node if node is on the
+   * extreme right and neighbor is to its left.
+   */
+
+  if (neighbor_is_right == false) {
+    struct __page_object * temp = this;
+    this = neighbor;
+    neighbor = temp;
+  }
+
+  // Now, 'this' is in left, and 'neighbor_page' is in right.
+  struct __page_object leftmost;
+  page_object_constructor(&leftmost);
+
+  leftmost.set_current_page_number(&leftmost,
+      neighbor->page.header.one_more_page_offset / PAGE_SIZE);
+  leftmost.read(&leftmost);
+
+  assert(leftmost.get_type(&leftmost) == LEAF_PAGE);
+
+  // control one_more_page_offset of neighbor...
+  this->page.content.key_and_offsets[this->page.header.number_of_keys].key = 
+    leftmost.page.content.records[0].key;
+  this->page.content.
+    key_and_offsets[this->page.header.number_of_keys].page_offset = 
+    neighbor->page.header.one_more_page_offset;
+
+  this->page.header.number_of_keys++;
+
+
+
+  int i,j, neighbor_end = neighbor->get_number_of_keys(neighbor);
+
+  for (i = this->page.header.number_of_keys, j = 0;
+      j < neighbor_end; ++i, ++j) {
+
+    memcpy(&this->page.content.key_and_offsets[i],
+        &neighbor->page.content.key_and_offsets[j],
+        sizeof(this->page.content.key_and_offsets[i])
+        );
+    this->page.header.number_of_keys++;
+  }
+
+
+  /* All children must now point up to the same parent.
+  */
+  struct __page_object child_page;
+  page_object_constructor(&child_page);
+  for (i = 0; i < this->page.header.number_of_keys; ++i) {
+    child_page.set_current_page_number(&child_page,
+        this->page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
+    child_page.read(&child_page);
+    child_page.page.header.linked_page_offset = 
+      this->current_page_number * PAGE_SIZE;
+    child_page.write(&child_page);
+  }
+
+
+  // free parent and neighbor
+  if(page_free(neighbor->get_current_page_number(neighbor))
+      == false) {
+    fprintf(stderr, "(__coalesce_leaves_when...) page_free() failed.\n");
+    assert(false);
+    exit(1);
+  }
+
+  if(page_free(parent->get_current_page_number(parent))
+      == false) {
+    fprintf(stderr, "(__coalesce_leaves_when...) page_free() failed.\n");
+    assert(false);
+    exit(1);
+  }
+
+  // Make 'this' as root
+  header_page->set_root_page_offset(header_page,
+      this->get_current_page_number(this) * PAGE_SIZE);
+  this->page.header.linked_page_offset = 0;
+  this->write(this);
+
+  return true;
+}
+
 bool __delete_key_and_offset_of_key(struct __page_object * const this,
     const int64_t key){
   // This function is called only current page is INTERNAL_PAGE.
@@ -1228,12 +1329,19 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
   int64_t k_prime_index = neighbor_is_right ?
     neighbor_index : neighbor_index - 2;
 
+  int64_t k_prime;
+
   if (k_prime_index == -1) {
     // Here is last problem place!!!
-    assert(false);
+    // This case is occurred only when parent is root.
+    assert(parent.current_page_number * PAGE_SIZE
+        == header_page->get_root_page_offset(header_page));
+    k_prime = -1;
+    /** assert(false); */
+  } else {
+    k_prime = parent.page.content.key_and_offsets[k_prime_index].key;
   }
 
-  int64_t k_prime = parent.page.content.key_and_offsets[k_prime_index].key;
 
   // Get neighbor page
   struct __page_object neighbor;
@@ -1251,7 +1359,14 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
   // Below 1 is the one_more_page_offset of neighbor
   if (1 + neighbor.get_number_of_keys(&neighbor)
       + this->get_number_of_keys(this) < capacity){
-    return __coalesce_nodes(this, &neighbor, neighbor_is_right, k_prime);
+
+
+    if (k_prime_index == -1) {
+      return __coalesce_nodes_when_parent_is_root(
+          this, &parent, &neighbor, neighbor_is_right);
+    } else {
+      return __coalesce_nodes(this, &neighbor, neighbor_is_right, k_prime);
+    }
   }
 
   /* Redistribution. */
