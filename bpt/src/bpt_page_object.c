@@ -956,6 +956,27 @@ bool __coalesce_nodes(struct __page_object * this,
     exit(1);
   }
 
+  if (parent.get_number_of_keys(&parent) == 0) {
+    // It is occurred only in root
+    assert(parent.get_current_page_number(&parent) * PAGE_SIZE
+        == header_page->get_root_page_offset(header_page));
+
+    // Remove root
+    // TODO
+    if(page_free(parent.get_current_page_number(&parent))
+        == false) {
+      fprintf(stderr, "(__coalesce_leaves) page_free() failed.\n");
+      assert(false);
+      exit(1);
+    }
+
+    // Make 'this' as root
+    header_page->set_root_page_offset(header_page,
+        this->get_current_page_number(this) * PAGE_SIZE);
+    this->page.header.linked_page_offset = 0;
+    this->write(this);
+  }
+
   return result;
 
 }
@@ -978,6 +999,10 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
       == header_page->get_root_page_offset(header_page)) {
     return true;
   }
+
+  // TODO: Below codes are not yet debugged.
+
+
 
   /* Case: deletion from a key_and_offset below the root.
    * (Rest of function body.)
@@ -1051,7 +1076,8 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
   /* Redistribution. */
   else {
-    //TODO
+    /** return __redistribute_nodes(this, &neighbor, neighbor_is_right, */
+    /**     k_prime_index, k_prime); */
     assert(false);
   }
 
