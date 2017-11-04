@@ -74,6 +74,7 @@ void print_all() {
 
   // Leaf is found.
   int64_t i;
+  int64_t correct = 1;
 
   while(1){
     assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
@@ -83,6 +84,11 @@ void print_all() {
           page_buffer.get_current_page_number(&page_buffer),
           page_buffer.page.content.records[i].key,
           page_buffer.page.content.records[i].value);
+
+      if (page_buffer.page.content.records[i].key
+          != correct++)  {
+        assert(false);
+      }
     }
     if (page_buffer.page.header.one_more_page_offset != 0) {
       page_buffer.set_current_page_number(&page_buffer,
@@ -240,9 +246,11 @@ int64_t find_leaf_page(const int key) {
   page.read(&page);
 
   // Leaf is not found. Go to found leaf
+  int64_t parent_offset;
   while(page.get_type(&page) != LEAF_PAGE) {
     assert(page.get_type(&page) != INVALID_PAGE);
 
+    parent_offset = page.current_page_number * PAGE_SIZE;
     // Internal page is found
 
     // Check one_more_page_offset
@@ -255,7 +263,6 @@ int64_t find_leaf_page(const int key) {
       }
     }
 
-
     // Next page is found. Go to next page
     if (i == 0) {
       page.set_current_page_number(&page, 
@@ -266,6 +273,12 @@ int64_t find_leaf_page(const int key) {
           page.get_key_and_offset(&page, i-1)->page_offset / PAGE_SIZE);
     }
     page.read(&page);
+
+
+    ///////////////////////////////////////////////
+    /** page.page.header.linked_page_offset = parent_offset; */
+    /** page.write(&page); */
+    ///////////////////////////////////////////////
 
   }
 

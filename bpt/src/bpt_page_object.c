@@ -754,7 +754,7 @@ int64_t __get_page_number_of_left(const struct __page_object * const this){
 
 void __get_k_prime_index_and_its_value(
     const struct __page_object * const this,
-    const int64_t neighbor_page_number,
+    const int64_t neighbor_page_number, const bool neighbor_is_right,
     int64_t * const k_prime_index, int64_t * const k_prime) {
 
   struct __page_object __parent_page;
@@ -789,7 +789,7 @@ void __get_k_prime_index_and_its_value(
   }
 
   // When neighbor is in left, increase k_prime_index by 1
-  if (this->page.header.one_more_page_offset == 0) {
+  if (neighbor_is_right == false) {
     i++;
     *k_prime_index = i;
     *k_prime = parent_page->page.content.key_and_offsets[i].key;
@@ -798,6 +798,8 @@ void __get_k_prime_index_and_its_value(
 
   // neighbor page must exist!
   assert(i != parent_page->page.header.number_of_keys);
+
+
 }
 
 void  __remove_key_and_offset_from_page(struct __page_object * const this,
@@ -949,6 +951,10 @@ bool __coalesce_nodes(struct __page_object * this,
       this->page.header.linked_page_offset / PAGE_SIZE);
   parent.read(&parent);
 
+  //TODO
+  if (neighbor_is_right == false) {
+    
+  }
 
   // delete key_and_offset from parent.
   bool result = __delete_key_and_offset_of_key(&parent, k_prime);
@@ -1365,7 +1371,16 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
       return __coalesce_nodes_when_parent_is_root(
           this, &parent, &neighbor, neighbor_is_right);
     } else {
-      return __coalesce_nodes(this, &neighbor, neighbor_is_right, k_prime);
+
+      // When neighbor is left, k_prime which will be deleted should be corrected
+      if (neighbor_is_right == false) {
+        k_prime = parent.page.content.key_and_offsets[k_prime_index + 1].key;
+        return __coalesce_nodes(this, &neighbor, neighbor_is_right, 
+            k_prime);
+      } else {
+        return __coalesce_nodes(this, &neighbor, neighbor_is_right, 
+            k_prime);
+      }
     }
   }
 
@@ -1387,11 +1402,11 @@ bool __coalesce_leaves(struct __page_object * this,
 
   // If 'neighbor_page' is left and 'this' is right, swap.
   // (When 'this' is the rightmost page in a node
-  if (this->page.header.one_more_page_offset == 0) {
-    struct __page_object * temp = this;
-    this = neighbor_page;
-    neighbor_page = temp;
-  }
+  /** if (this->page.header.one_more_page_offset == 0) {
+    *   struct __page_object * temp = this;
+    *   this = neighbor_page;
+    *   neighbor_page = temp;
+    * } */
 
   // Now, 'neighbor_page' is the right sibling of 'this'
   // Coalescence!
@@ -1432,6 +1447,36 @@ bool __coalesce_leaves(struct __page_object * this,
   parent.read(&parent);
 
   bool result = __delete_key_and_offset_of_key(&parent, k_prime);
+
+
+  ///////////////////////////////////////////////////////
+  // find neighbor_page's previous page and connect
+/**   page_object_t page_buffer;
+  *   page_object_constructor(&page_buffer);
+  *   page_buffer.set_current_page_number(&page_buffer,
+  *       header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+  *   page_buffer.read(&page_buffer);
+  *
+  *   while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
+  *     assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE);
+  *
+  *     page_buffer.set_current_page_number(&page_buffer,
+  *         page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+  *     page_buffer.read(&page_buffer);
+  *   }
+  *
+  *   while (page_buffer.page.header.one_more_page_offset
+  *       != neighbor_page->current_page_number * PAGE_SIZE) {
+  *     page_buffer.current_page_number =
+  *       page_buffer.page.header.one_more_page_offset / PAGE_SIZE;
+  *     page_buffer.read(&page_buffer);
+  *   }
+  *
+  *   page_buffer.page.header.one_more_page_offset =
+  *     neighbor_page->page.header.one_more_page_offset;
+  *   page_buffer.write(&page_buffer); */
+
+  ///////////////////////////////////////////////////////
 
   // remove neighbor page.
   if(page_free(neighbor_page->get_current_page_number(neighbor_page))
@@ -1477,23 +1522,24 @@ bool __redistribute_leaves(struct __page_object * this,
   // Normal situations: 'this' is left. 'neighbor_page' is right.
 
   // In normal situation, a record will be moved from neighbor to 'this';
+  // TODO: below variables is useless.
   bool move_record_from_neighbor_to_this = true;
 
   /** bool from_neighbor_to_this = true; */
 
   // If 'neighbor_page' is left and 'this' is right, swap.
   // (When 'this' is the rightmost page in a node
-  if (this->page.header.one_more_page_offset == 0) {
-    // Extra situation
-    // Make this situation normal
-    struct __page_object * temp = this;
-    this = neighbor_page;
-    neighbor_page = temp;
-
-
-    // In normal situation, a record will be moved from neighbor to 'this';
-    move_record_from_neighbor_to_this = false;
-  }
+/**   if (this->page.header.one_more_page_offset == 0) {
+  *     // Extra situation
+  *     // Make this situation normal
+  *     struct __page_object * temp = this;
+  *     this = neighbor_page;
+  *     neighbor_page = temp;
+  *
+  *
+  *     // In normal situation, a record will be moved from neighbor to 'this';
+  *     move_record_from_neighbor_to_this = false;
+  *   } */
 
   // Get parent page.
 
@@ -1543,8 +1589,8 @@ bool __redistribute_leaves(struct __page_object * this,
 
     // set new k_prime
     // new key must be bigger than old key
-    assert(parent.page.content.key_and_offsets[k_prime_index].key
-        < neighbor_page->page.content.records[0].key);
+    /** assert(parent.page.content.key_and_offsets[k_prime_index].key
+      *     < neighbor_page->page.content.records[0].key); */
     // k_prime value is okay?
     // TODO: below assertion can be removed.
     // TODO: argument k_prime can be removed.
@@ -1624,6 +1670,22 @@ bool __redistribute_leaves(struct __page_object * this,
   return true;
 }
 
+bool __is_this_rightmost_in_parent(const struct __page_object * const this) {
+  struct __page_object parent;
+  page_object_constructor(&parent);
+
+  parent.set_current_page_number(&parent,
+      this->page.header.linked_page_offset / PAGE_SIZE);
+  parent.read(&parent);
+
+  if (parent.page.content.
+      key_and_offsets[parent.page.header.number_of_keys - 1].page_offset
+      == this->current_page_number * PAGE_SIZE) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 
 bool __delete_record_of_key(struct __page_object * const this,
@@ -1677,8 +1739,18 @@ bool __delete_record_of_key(struct __page_object * const this,
 
   // It means that current page is rightmost page.
   // neighbor will be the left page of current page.
-  if (neighbor_page_number == 0) {
+  
+  
+
+  // When neighbor_page_number == 0, it means that it is the last page
+  // of whole B+Tree
+
+  /** if (neighbor_page_number == 0) { */
+  bool neighbor_is_right = true;
+  if (neighbor_page_number == 0
+      || __is_this_rightmost_in_parent(this)) {
     neighbor_page_number = __get_page_number_of_left(this);
+    neighbor_is_right = false;
   }
 
   // At least one neighbor page is exists
@@ -1688,7 +1760,7 @@ bool __delete_record_of_key(struct __page_object * const this,
   int64_t k_prime_index = -1;
   int64_t k_prime = -1;
   __get_k_prime_index_and_its_value(
-      this, neighbor_page_number,
+      this, neighbor_page_number, neighbor_is_right,
       &k_prime_index, &k_prime);
 
   assert(k_prime_index != -1 && k_prime != -1);
@@ -1709,13 +1781,36 @@ bool __delete_record_of_key(struct __page_object * const this,
   if (neighbor_page.page.header.number_of_keys
       + this->page.header.number_of_keys
       < capacity) {
-    return __coalesce_leaves(this, &neighbor_page, k_prime);
+
+    // TODO
+    // increase k_prime_index by 1 when neighbor is left
+    //  for deleting..
+    if (neighbor_is_right == false) {
+        struct __page_object __parent_page;
+      page_object_constructor(&__parent_page);
+
+      __parent_page.set_current_page_number(&__parent_page,
+          this->page.header.linked_page_offset / PAGE_SIZE);
+      __parent_page.read(&__parent_page);
+
+      k_prime = __parent_page.page.content.key_and_offsets[k_prime_index + 1].key;
+    }
+
+    if (neighbor_is_right == true) {
+      return __coalesce_leaves(this, &neighbor_page, k_prime);
+    } else {
+      return __coalesce_leaves(&neighbor_page, this, k_prime);
+    }
   }
 
   /* Redistribution. */
 
   else {
-    return __redistribute_leaves(this, &neighbor_page, k_prime_index, k_prime);
+    if (neighbor_is_right == true) {
+      return __redistribute_leaves(this, &neighbor_page, k_prime_index, k_prime);
+    } else {
+      return __redistribute_leaves(&neighbor_page, this, k_prime_index, k_prime);
+    }
   }
 }
 

@@ -7,3 +7,5 @@ input*
 output
 main
 lib/*.a
+temp
+log

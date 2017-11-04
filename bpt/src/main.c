@@ -62,6 +62,57 @@ void parameter_check(void) {
 bool *debug_vector;
 int64_t debug_vector_size;
 int64_t debug_vector_max_idx = 1;
+bool *not_found;
+
+void check_post_condition() {
+  page_object_t page_buffer;
+  page_object_constructor(&page_buffer);
+  page_buffer.set_current_page_number(&page_buffer,
+      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+  page_buffer.read(&page_buffer);
+
+  while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
+    assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE);
+
+    page_buffer.set_current_page_number(&page_buffer,
+        page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+    page_buffer.read(&page_buffer);
+  }
+
+  // Leaf is found.
+  int64_t i;
+  for (i = 0; i < 110000; ++i) {
+    not_found[i] = true;
+  }
+
+  while(1){
+    assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
+    for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) {
+
+      /** printf("[page #%ld] key:%ld, value:%s\n",
+        *     page_buffer.get_current_page_number(&page_buffer),
+        *     page_buffer.page.content.records[i].key,
+        *     page_buffer.page.content.records[i].value); */
+
+      not_found[page_buffer.page.content.records[i].key] = false;
+    }
+    if (page_buffer.page.header.one_more_page_offset != 0) {
+      page_buffer.set_current_page_number(&page_buffer,
+          page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+      page_buffer.read(&page_buffer);
+    } else {
+      break;
+    }
+  }
+
+  printf("** Correctness check **\n");
+  for (i = 1; i <= 100000; ++i) {
+    if (debug_vector[i] != not_found[i]) {
+      printf("Problem occurred. key:%ld\n", i);
+      assert(false);
+    }
+  }
+}
 #endif
 
 enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST};
@@ -105,9 +156,10 @@ int main(void)
 #ifdef DBG
   parameter_check();
 
-  debug_vector_size = 10000;
+  debug_vector_size = 110000;
   debug_vector = calloc(debug_vector_size, sizeof(*debug_vector));
   debug_vector_max_idx = 0;
+  not_found = calloc(110000, sizeof(*not_found));
 #endif
 
 #ifndef fsync
@@ -312,8 +364,8 @@ int main(void)
               ,key , find_result);
 
 #ifdef DBG
-          /** debug_vector[key] = true;
-            * for (i = 1; i < debug_vector_max_idx; ++i) {
+          debug_vector[key] = true;
+          /** for (i = 1; i < debug_vector_max_idx; ++i) {
             *   if (debug_vector[i] == false) {
             *     if (find(i) == NULL) {
             *       printf("!! key: %d is lost!\n", i);
@@ -321,7 +373,11 @@ int main(void)
             *     }
             *   }
             * } */
+          /** check_post_condition(); */
 #endif
+        } else {
+          printf("(delete) key %ld is not found.\n", key);
+          assert(false);
         }
 
         break;
@@ -349,6 +405,7 @@ int main(void)
 
 #ifdef DBG
   free(debug_vector);
+  free(not_found);
 #endif
 
   return 0;
