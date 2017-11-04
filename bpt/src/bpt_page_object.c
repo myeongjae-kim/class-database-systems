@@ -1409,7 +1409,8 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
     } else {
 
       if (neighbor_is_right == false) {
-        k_prime = parent.page.content.key_and_offsets[k_prime_index + 1].key;
+        k_prime_index++;
+        k_prime = parent.page.content.key_and_offsets[k_prime_index].key;
         return __redistribute_nodes(&neighbor, this, neighbor_is_right,
             k_prime_index, k_prime);
       } else {

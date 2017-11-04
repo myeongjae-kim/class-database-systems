@@ -53,6 +53,7 @@ void go_to_page_number(const int64_t page_number) {
   current_page_start_offset = lseek64(db, page_number * PAGE_SIZE, SEEK_SET);
   if (current_page_start_offset < 0) {
     perror("(go_to_page) moving file offset failed.");
+    assert(false);
     exit(1);
   }
 }
