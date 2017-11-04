@@ -13,7 +13,8 @@
 #define _LARGEFILE64_SOURCE
 
 // If fsync(x); is defined, DB will work as buffered I/O
-#define fsync(x);
+// #define fsync(x);
+#define assert(x);
 
 #include <stdint.h>
 #include <stdio.h>
@@ -25,7 +26,8 @@
 
 #include "bpt_header_object.h"
 
-#define DBG
+// #define DBG
+// #define TESTING
 
 #define PAGE_SIZE 4096
 

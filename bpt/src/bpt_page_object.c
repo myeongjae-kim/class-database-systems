@@ -1032,7 +1032,6 @@ bool __redistribute_nodes(struct __page_object * this,
         == k_prime);
 
 
-    assert(neighbor_page->page.content.key_and_offsets[0].key != 0);
     parent.page.content.key_and_offsets[k_prime_index].key
       = neighbor_page->page.content.key_and_offsets[0].key;
 
@@ -1091,7 +1090,6 @@ bool __redistribute_nodes(struct __page_object * this,
     assert(parent.page.content.key_and_offsets[k_prime_index].key
         > neighbor_page->page.content.
         key_and_offsets[neighbor_page->page.header.number_of_keys - 1].key);
-    assert(this->page.content.key_and_offsets[0].key != 0);
 
 
 
@@ -1668,7 +1666,6 @@ bool __redistribute_leaves(struct __page_object * this,
 
 
 
-    assert(neighbor_page->page.content.records[0].key != 0);
 
 
 
@@ -1719,7 +1716,6 @@ bool __redistribute_leaves(struct __page_object * this,
 
 
 
-    assert(neighbor_page->page.content.records[0].key != 0);
 
 
 

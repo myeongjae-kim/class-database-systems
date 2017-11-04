@@ -11,7 +11,6 @@
 #include <assert.h>
 #endif
 
-
 // TODO: delete
 #include "bpt_header_object.h"
 #include "bpt_page_object.h"
@@ -115,10 +114,10 @@ void check_post_condition() {
 }
 #endif
 
-enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST};
+enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST, QUIT};
 
-#define COMMAND_CASE_NUM 6
-char* commands[] = {"", "open", "insert", "find", "delete", "test"};
+#define COMMAND_CASE_NUM 7
+char* commands[] = {"", "open", "insert", "find", "delete", "test", "q"};
 
 enum command_case decode_command(char* command) {
   enum command_case return_case;
@@ -142,6 +141,7 @@ int main(void)
   int32_t i;
   bool open_is_called = false;
 
+#ifndef TESTING
 #ifdef fsync
   putchar('\n');
   printf("*******************************************************\n");
@@ -151,6 +151,7 @@ int main(void)
   printf("*******************************************************\n");
   printf("*******************************************************\n");
   putchar('\n');
+#endif
 #endif
   
 #ifdef DBG
@@ -162,7 +163,7 @@ int main(void)
   not_found = calloc(110000, sizeof(*not_found));
 #endif
 
-#ifndef fsync
+#ifdef TESTING
   // Make standard I/O Unbuffered.
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stdin, NULL, _IONBF, 0);
@@ -171,8 +172,15 @@ int main(void)
   // initializing buffer.
   memset(command_input, 0 , sizeof(command_input));
 
+
+#ifdef TESTING
+  goto TEST_SCRIPT;
+#endif
+
   // Open database first
+#ifndef TESTING
   printf("> ");
+#endif
   while(fgets(command_input, sizeof(command_input), stdin) != NULL){
     input_iterator = command_input;
     key = 0;
@@ -210,6 +218,7 @@ int main(void)
       case FIND:
       case DELETE:
       case TEST:
+      case QUIT:
       case INVALID:
       default:
         printf("DB is not ye opened. Open database first.\n");
@@ -220,7 +229,9 @@ int main(void)
     if (open_is_called) {
       break;
     }
+#ifndef TESTING
     printf("> ");
+#endif
   }
 
   if (open_is_called == false) {
@@ -230,7 +241,14 @@ int main(void)
 
   // get other commands
 
+#ifdef TESTING
+TEST_SCRIPT:
+  open_db("test.db");
+#endif
+
+#ifndef TESTING
   printf("> ");
+#endif
   while(fgets(command_input, sizeof(command_input), stdin) != NULL){
     input_iterator = command_input;
     key = 0;
@@ -284,11 +302,7 @@ int main(void)
         input_iterator += i + 1;
 
         // Parsed input check
-        if (key == 0) {
-          printf("(insert) key conversion to integer is failed.\n");
-          printf("(insert) Usage > insert <key> <value>\n");
-          break;
-        } else if(input_iterator == NULL
+        if(input_iterator == NULL
             ||*input_iterator == ' '
             || *input_iterator == '\0') {
           printf("(insert) <value> does not exist.\n");
@@ -300,14 +314,18 @@ int main(void)
         printf("key: %ld, value: %s\n", key, input_iterator);
 #endif
 
-#ifdef DBG
         // Insert only if key is not exist.
         if (find(key) == NULL) {
-          insert(key, input_iterator);
-
-          debug_vector_max_idx++;
-        }
+          if (insert(key, input_iterator) == 0) {
+#ifdef DBG
+            printf("Key: %ld, Value: %s", key, input_iterator);
 #endif
+          }
+
+#ifdef DBG
+          debug_vector_max_idx++;
+#endif
+        }
 
 
         break;
@@ -321,19 +339,19 @@ int main(void)
         // Skip space bar
         input_iterator++;
 
-        if ((key = atol(input_iterator)) == 0) {
-          printf("(find) key conversion to integer is failed.\n");
-          printf("(find) Usage > find <key>\n");
-          break;
-        }
+        key = atol(input_iterator);
 
 #ifdef DBG
         printf("key: %ld\n", key);
 #endif
         if((find_result = find(key)) != NULL) {
+#ifdef DBG
           printf("Key #%ld is found. Value : %s\n", key, find_result);
+#else
+          printf("Key: %ld, Value: %s\n", key, find_result);
+#endif
         } else {
-          printf("Key #%ld is not found.\n", key);
+          printf("Not Exists\n");
         }
 
         break;
@@ -348,36 +366,39 @@ int main(void)
         input_iterator++;
 
 
-        if ((key = atol(input_iterator)) == 0) {
-          printf("(delete) key conversion to integer is failed.\n");
-          printf("(delete) Usage > delete <key>\n");
-          break;
-        }
+        key = atol(input_iterator);
 
 #ifdef DBG
         printf("key: %ld\n", key);
 #endif
 
         if ((find_result = find(key)) != NULL) {
-          delete(key);
-          printf("(delete)[key: %ld, value: %s] is deleted.\n"
-              ,key , find_result);
-
+          if (delete(key) == 0) {
 #ifdef DBG
+            printf("(delete)[key: %ld, value: %s] is deleted.\n"
+                ,key , find_result);
+#endif
+          } else {
+            printf("(delete) Deletion failed. key: %ld\n", key);
+          }
+#ifdef DBG
+
           /** debug_vector[key] = true; */
           /** for (i = 1; i < debug_vector_max_idx; ++i) {
-            *   if (debug_vector[i] == false) {
-            *     if (find(i) == NULL) {
-            *       printf("!! key: %d is lost!\n", i);
-            *       assert(false);
-            *     }
-            *   }
-            * } */
+           *   if (debug_vector[i] == false) {
+           *     if (find(i) == NULL) {
+           *       printf("!! key: %d is lost!\n", i);
+           *       assert(false);
+           *     }
+           *   }
+           * } */
           /** check_post_condition(); */
 #endif
         } else {
+#ifdef DBG
           printf("(delete) key %ld is not found.\n", key);
           assert(false);
+#endif
         }
 
         break;
@@ -387,6 +408,9 @@ int main(void)
         break;
 
 
+      case QUIT:
+        exit(0);
+        break;
       case INVALID:
       default:
         printf(" Invalid command is inputted\n");
@@ -399,7 +423,9 @@ int main(void)
     }
 
 
+#ifndef TESTING
     printf("> ");
+#endif
   };
 
 

@@ -9,3 +9,4 @@ main
 lib/*.a
 temp
 log
+test*
