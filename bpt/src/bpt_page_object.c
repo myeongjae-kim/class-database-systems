@@ -1757,16 +1757,16 @@ bool __delete_record_of_key(struct __page_object * const this,
     // TODO
     // increase k_prime_index by 1 when neighbor is left
     //  for deleting..
-    if (neighbor_is_right == false) {
-      struct __page_object __parent_page;
-      page_object_constructor(&__parent_page);
-
-      __parent_page.set_current_page_number(&__parent_page,
-          this->page.header.linked_page_offset / PAGE_SIZE);
-      __parent_page.read(&__parent_page);
-
-      k_prime = __parent_page.page.content.key_and_offsets[k_prime_index + 1].key;
-    }
+/**     if (neighbor_is_right == false) {
+  *       struct __page_object __parent_page;
+  *       page_object_constructor(&__parent_page);
+  *
+  *       __parent_page.set_current_page_number(&__parent_page,
+  *           this->page.header.linked_page_offset / PAGE_SIZE);
+  *       __parent_page.read(&__parent_page);
+  *
+  *       k_prime = __parent_page.page.content.key_and_offsets[k_prime_index + 1].key;
+  *     } */
 
     if (neighbor_is_right == true) {
       return __coalesce_leaves(this, &neighbor_page, k_prime);
