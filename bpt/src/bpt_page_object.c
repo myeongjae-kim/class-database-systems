@@ -1589,8 +1589,8 @@ bool __redistribute_leaves(struct __page_object * this,
 
     // set new k_prime
     // new key must be bigger than old key
-    /** assert(parent.page.content.key_and_offsets[k_prime_index].key
-      *     < neighbor_page->page.content.records[0].key); */
+    assert(parent.page.content.key_and_offsets[k_prime_index].key
+        < neighbor_page->page.content.records[0].key);
     // k_prime value is okay?
     // TODO: below assertion can be removed.
     // TODO: argument k_prime can be removed.
