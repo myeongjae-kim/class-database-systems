@@ -364,7 +364,7 @@ int main(void)
               ,key , find_result);
 
 #ifdef DBG
-          debug_vector[key] = true;
+          /** debug_vector[key] = true; */
           /** for (i = 1; i < debug_vector_max_idx; ++i) {
             *   if (debug_vector[i] == false) {
             *     if (find(i) == NULL) {

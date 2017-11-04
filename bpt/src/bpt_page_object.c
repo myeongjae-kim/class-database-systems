@@ -1373,6 +1373,13 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
   int64_t capacity = OFFSET_ORDER;
 
+
+  if (neighbor_is_right == false) {
+    k_prime_index++;
+    k_prime = parent.page.content.key_and_offsets[k_prime_index].key;
+  }
+
+
   /* Coalescence. */
 
   // Below 1 is the one_more_page_offset of neighbor
@@ -1388,7 +1395,6 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
       // When neighbor is left, k_prime which will be deleted should be corrected
       if (neighbor_is_right == false) {
-        k_prime = parent.page.content.key_and_offsets[k_prime_index + 1].key;
         return __coalesce_nodes(&neighbor, this , neighbor_is_right, 
             k_prime);
       } else {
@@ -1409,8 +1415,6 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
     } else {
 
       if (neighbor_is_right == false) {
-        k_prime_index++;
-        k_prime = parent.page.content.key_and_offsets[k_prime_index].key;
         return __redistribute_nodes(&neighbor, this, neighbor_is_right,
             k_prime_index, k_prime);
       } else {
