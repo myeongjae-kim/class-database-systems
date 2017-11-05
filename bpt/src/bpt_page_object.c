@@ -1,3 +1,7 @@
+/* File Name : bpt_page_object.c
+ * Author    : Kim, Myeong Jae
+ * Due Date  : 2017-11-5 */
+
 #include "bpt_page_object.h"
 #include "bpt_free_page_manager.h"
 #include <string.h>

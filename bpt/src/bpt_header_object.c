@@ -1,3 +1,7 @@
+/* File Name : bpt_header_object.c
+ * Author    : Kim, Myeong Jae
+ * Due Date  : 2017-11-5 */
+
 #include "bpt_header_object.h"
 
 extern int32_t db;

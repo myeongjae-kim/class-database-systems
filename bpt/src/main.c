@@ -1,4 +1,5 @@
-/* File Name : main.c Author    : Kim, Myeong Jae
+/* File Name : main.c
+ * Author    : Kim, Myeong Jae
  * Due Date  : 2017-11-5
  *
  * This is a main file of disk-based b+tree */
