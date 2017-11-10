@@ -889,8 +889,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
     const int64_t key);
 
 bool __coalesce_nodes(struct __page_object * this,
-    struct __page_object * neighbor_page, const bool neighbor_is_right,
-    const int64_t k_prime) {
+    struct __page_object * neighbor_page, const int64_t k_prime) {
 
   /* Swap neighbor with node if node is on the
    * extreme right and neighbor is to its left.
@@ -1172,8 +1171,7 @@ bool __redistribute_nodes(struct __page_object * this,
 bool __coalesce_nodes_when_parent_is_root(
     struct __page_object * this, 
     struct __page_object * const parent,
-    struct __page_object * neighbor,
-    bool neighbor_is_right) {
+    struct __page_object * neighbor) {
 
   // Here, only special case.
   assert(this->page.header.linked_page_offset
@@ -1272,8 +1270,7 @@ bool __coalesce_nodes_when_parent_is_root(
 bool __redistribute_nodes_when_parent_is_root(
     struct __page_object * this, 
     struct __page_object * const parent,
-    struct __page_object * neighbor,
-    bool neighbor_is_right) {
+    struct __page_object * neighbor) {
 
   // Here, only special case.
   assert(this->page.header.linked_page_offset
@@ -1455,16 +1452,14 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
     if (k_prime_index == -1) {
       //TODO Below will be debugged later...
       return __coalesce_nodes_when_parent_is_root(
-          &neighbor, &parent, this, neighbor_is_right);
+          &neighbor, &parent, this);
     } else {
 
       // When neighbor is left, k_prime which will be deleted should be corrected
       if (neighbor_is_right == false) {
-        return __coalesce_nodes(&neighbor, this , neighbor_is_right, 
-            k_prime);
+        return __coalesce_nodes(&neighbor, this, k_prime);
       } else {
-        return __coalesce_nodes(this, &neighbor, neighbor_is_right, 
-            k_prime);
+        return __coalesce_nodes(this, &neighbor, k_prime);
       }
     }
   }
@@ -1476,7 +1471,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
       //TODO
       /** assert(false); // It can be happen? why not? */
       return __redistribute_nodes_when_parent_is_root(
-          &neighbor, &parent, this, neighbor_is_right);
+          &neighbor, &parent, this);
     } else {
       return __redistribute_nodes(this, &neighbor, neighbor_is_right,
           k_prime_index, k_prime);

@@ -7,6 +7,9 @@
 #include <string.h>
 #include <assert.h>
 
+// TODO: Someday below codes will be refactored.
+// Use page object.
+
 // A size of free page list
 static int64_t __current_capacity = 0;
 

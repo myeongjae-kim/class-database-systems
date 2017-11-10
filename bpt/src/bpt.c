@@ -182,47 +182,7 @@ void initialize_db(void) {
   write_page_header(&page_header);
 }
 
-// This function returns a page number
-// Get a page from free list
-// Leaf and internal page has same structure.
-/** int64_t leaf_or_internal_page_alloc(const int64_t parent_page_number,
- *     const int32_t is_leaf, const int64_t one_more_page_number) {
- *   int64_t new_page_number = page_alloc();
- *   page_header_t page_header;
- *   memset(&page_header, 0, sizeof(page_header));
- *
- *   // parent page number should be smaller than # of pages.
- *   assert(parent_page_number < header_page->get_number_of_pages(header_page));
- *   page_header.linked_page_offset = parent_page_number * PAGE_SIZE;
- *   page_header.is_leaf = is_leaf;
- *   page_header.one_more_page_offset = one_more_page_number * PAGE_SIZE;
- *
- *   // write header to disk
- *   go_to_page_number(new_page_number);
- *   write_page_header(&page_header);
- *
- *   return new_page_number;
- * }
- *
- *
- * // This is a wrapper of allocation function
- * int64_t leaf_page_alloc(const int64_t parent_page_number,
- *     const int64_t right_sibling_page_number) {
- *   return leaf_or_internal_page_alloc(parent_page_number,
- *       1, right_sibling_page_number);
- * }
- *
- * // This is a wrapper of allocation function
- * int64_t internal_page_alloc(const int64_t parent_page_number,
- *     const int64_t one_more_page_number) {
- *   return leaf_or_internal_page_alloc(parent_page_number,
- *       0, one_more_page_number);
- * } */
 
-
-
-
-// TODO: Not yet debugged.
 // This function finds the leaf page that a key will be stored.
 int64_t find_leaf_page(const int key) {
   int32_t i = 0;
@@ -247,11 +207,11 @@ int64_t find_leaf_page(const int key) {
   page.read(&page);
 
   // Leaf is not found. Go to found leaf
-  int64_t parent_offset;
+  /** int64_t parent_offset; */
   while(page.get_type(&page) != LEAF_PAGE) {
     assert(page.get_type(&page) != INVALID_PAGE);
 
-    parent_offset = page.current_page_number * PAGE_SIZE;
+    /** parent_offset = page.current_page_number * PAGE_SIZE; */
     // Internal page is found
 
     // Check one_more_page_offset
