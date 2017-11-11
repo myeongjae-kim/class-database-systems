@@ -350,11 +350,15 @@ int delete(int32_t table_id, int64_t key){
 
 
 int close_table(int table_id){
+  // clear free pages.
+  free_page_clean(table_id);
+
   int fd = get_fd_of_table(table_id);
   if(close(fd) < 0) {
     perror("(close_table)");
     exit(1);
   }
+
 
   if(remove_table_id_mapping(table_id) == true) {
     return 0;

@@ -448,7 +448,7 @@ bool page_free(int table_id, const int64_t page_number){
 
 void free_page_clean(int table_id){
 #ifdef DBG
-  printf("(free_page_clean) I am called!\n");
+  printf("(free_page_clean) Free page cleaning start. Table #%d!\n", table_id);
 #endif
 
   // Find the start of last free pages

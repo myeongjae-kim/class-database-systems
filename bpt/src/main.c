@@ -116,10 +116,10 @@ bool *not_found;
 /** } */
 #endif
 
-enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST, QUIT, CLOSE};
+enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST, QUIT};
 
-#define COMMAND_CASE_NUM 8
-char* commands[] = {"", "open", "insert", "find", "delete", "test", "q", "close"};
+#define COMMAND_CASE_NUM 7
+char* commands[] = {"", "open", "insert", "find", "delete", "test", "q"};
 
 enum command_case decode_command(char* command) {
   enum command_case return_case;
@@ -142,7 +142,7 @@ int main(void)
   int64_t key;
   int32_t i;
   bool open_is_called = false;
-  int table_id, closing_table_id;
+  int opened_table_id = 0;
 
 
 #ifndef TESTING
@@ -223,8 +223,11 @@ int main(void)
 #ifdef DBG
         printf("pathname: %s\n", input_iterator);
 #endif
-        table_id = open_table(input_iterator);
-        if (table_id < 0) {
+
+        // open table
+        assert(opened_table_id == 0);
+        opened_table_id = open_table(input_iterator);
+        if (opened_table_id < 0) {
           printf("(main) DB Opening is failed.\n");  
           exit(1);
         }
@@ -238,7 +241,6 @@ int main(void)
       case TEST:
       case QUIT:
         goto end;
-      case CLOSE:
       case INVALID:
       default:
         printf("DB is not ye opened. Open database first.\n");
@@ -291,15 +293,34 @@ TEST_SCRIPT:
         // Skip space bar
         input_iterator++;
 
+
+
 #ifdef DBG
         printf("pathname: %s\n", input_iterator);
 #endif
-        table_id = open_table(input_iterator);
-        if (table_id < 0) {
+
+
+        // If a table is opened, close it
+        if (opened_table_id != 0) {
+/**           if(close_table(opened_table_id) != 0) {
+  *             fprintf(stderr, "(main) closing table is failed.\n");
+  *             assert(false);
+  *             exit(1);
+  *           }
+  *
+  * #ifdef DBG
+  *           printf("Already opened table #%d is closed.\n", opened_table_id);
+  * #endif */
+          opened_table_id = 0;
+        }
+
+        // open table
+        assert(opened_table_id == 0);
+        opened_table_id = open_table(input_iterator);
+        if (opened_table_id < 0) {
           printf("(main) DB Opening is failed.\n");  
           exit(1);
         }
-
 
         break;
       case INSERT:
@@ -336,8 +357,8 @@ TEST_SCRIPT:
 #endif
 
         // Insert only if key is not exist.
-        if (find(table_id, key) == NULL) {
-          if (insert(table_id, key, input_iterator) == 0) {
+        if (find(opened_table_id, key) == NULL) {
+          if (insert(opened_table_id, key, input_iterator) == 0) {
 #ifdef DBG
             printf("Insertion is successulf, Key: %ld, Value: %s\n", key, input_iterator);
 #endif
@@ -365,7 +386,7 @@ TEST_SCRIPT:
 #ifdef DBG
         printf("key: %ld\n", key);
 #endif
-        if((find_result = find(table_id, key)) != NULL) {
+        if((find_result = find(opened_table_id, key)) != NULL) {
 #ifdef DBG
           printf("Key #%ld is found. Value : %s\n", key, find_result);
 #else
@@ -393,8 +414,8 @@ TEST_SCRIPT:
         printf("key: %ld\n", key);
 #endif
 
-        if ((find_result = find(table_id, key)) != NULL) {
-          if (delete(table_id, key) == 0) {
+        if ((find_result = find(opened_table_id, key)) != NULL) {
+          if (delete(opened_table_id, key) == 0) {
 #ifdef DBG
             printf("(delete)[key: %ld, value: %s] is deleted.\n"
                 ,key , find_result);
@@ -425,36 +446,12 @@ TEST_SCRIPT:
         break;
 
       case TEST:
-        testing(table_id);
+        testing(opened_table_id);
         break;
 
 
       case QUIT:
         goto end;
-        break;
-
-      case CLOSE:
-        input_iterator += strlen(commands[CLOSE]);
-        if (*input_iterator != ' ') {
-          printf("(close) Argument is invalid.\n");
-          printf("(close) Usage > close <table_id>\n");
-          break;
-        }
-        // Skip space bar
-        input_iterator++;
-
-        closing_table_id = atol(input_iterator);
-
-        // close the table
-        if (close_table(closing_table_id) != 0) {
-          fprintf(stderr, "Table #%d closing is failed.\n", closing_table_id);
-          assert(false);
-          exit(1);
-        }
-#ifdef DBG
-        printf("Table #%d is closed.\n", closing_table_id);
-#endif
-
         break;
       case INVALID:
       default:

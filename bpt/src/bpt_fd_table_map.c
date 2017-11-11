@@ -67,6 +67,7 @@ bool remove_table_id_mapping(const int32_t table_id) {
 
   // destruct header information
   header_object_destructor(&header_page[table_id]);
+  fd_to_table_map[table_id] = 0;
   return true;
 }
 
