@@ -116,10 +116,10 @@ bool *not_found;
 /** } */
 #endif
 
-enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST, QUIT};
+enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST, QUIT, CLOSE};
 
-#define COMMAND_CASE_NUM 7
-char* commands[] = {"", "open", "insert", "find", "delete", "test", "q"};
+#define COMMAND_CASE_NUM 8
+char* commands[] = {"", "open", "insert", "find", "delete", "test", "q", "close"};
 
 enum command_case decode_command(char* command) {
   enum command_case return_case;
@@ -142,7 +142,8 @@ int main(void)
   int64_t key;
   int32_t i;
   bool open_is_called = false;
-  int table_id;
+  int table_id, closing_table_id;
+
 
 #ifndef TESTING
 #ifdef fsync
@@ -183,8 +184,13 @@ int main(void)
 
 #ifdef DBG
   // temp codes
-  /** int32_t a = set_new_table_of_fd(4); */
-  /** exit(0); */
+  /** int table1 = open_table("database");
+    * int table2 = open_table("db");
+    * insert(table1, 100, "hudred");
+    * insert(table2, 200, "two hudred");
+    * printf("%s\n", find(table1, 100));
+    * printf("%s\n", find(table2, 200));
+    * exit(0); */
 #endif
 
 
@@ -231,6 +237,8 @@ int main(void)
       case DELETE:
       case TEST:
       case QUIT:
+        goto end;
+      case CLOSE:
       case INVALID:
       default:
         printf("DB is not ye opened. Open database first.\n");
@@ -422,7 +430,31 @@ TEST_SCRIPT:
 
 
       case QUIT:
-        exit(0);
+        goto end;
+        break;
+
+      case CLOSE:
+        input_iterator += strlen(commands[CLOSE]);
+        if (*input_iterator != ' ') {
+          printf("(close) Argument is invalid.\n");
+          printf("(close) Usage > close <table_id>\n");
+          break;
+        }
+        // Skip space bar
+        input_iterator++;
+
+        closing_table_id = atol(input_iterator);
+
+        // close the table
+        if (close_table(closing_table_id) != 0) {
+          fprintf(stderr, "Table #%d closing is failed.\n", closing_table_id);
+          assert(false);
+          exit(1);
+        }
+#ifdef DBG
+        printf("Table #%d is closed.\n", closing_table_id);
+#endif
+
         break;
       case INVALID:
       default:
@@ -440,6 +472,8 @@ TEST_SCRIPT:
     printf("> ");
 #endif
   };
+
+end:
 
 
 #ifdef DBG
