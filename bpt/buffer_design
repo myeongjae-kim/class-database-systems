@@ -21,5 +21,8 @@ shutdown_db 불리게 하자. init_db 부를 때 atexit으로 shutdown_db 등록
 그리고 open_db, close_db를 open_table, close_table로 구현하자.
 그 다음에 insert, find, delete를 table_id로 관리하게 구현
 
+
+-----여기까지 완료
+
 여기까지는 준비 과정이고, 마지막으로
 init_db, shutdown_db 구현하면서 버퍼매니저 만들면 되겠다.

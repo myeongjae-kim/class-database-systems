@@ -25,7 +25,7 @@ void print_page(int64_t page_number);
 void print_header_page();
 
 
-void testing(void) {
+void testing(int table_id) {
 /**   printf("(testing)\n");
   *   char* ptr;
   *
@@ -38,7 +38,7 @@ void testing(void) {
   *     printf("\r%s                               ", ptr);
   *   }
   *   printf("                                      \n"); */
-  print_all();
+  print_all(table_id);
 }
 
 
@@ -65,55 +65,55 @@ int64_t debug_vector_size;
 int64_t debug_vector_max_idx = 1;
 bool *not_found;
 
-void check_post_condition() {
-  page_object_t page_buffer;
-  page_object_constructor(&page_buffer);
-  page_buffer.set_current_page_number(&page_buffer,
-      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
-  page_buffer.read(&page_buffer);
-
-  while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
-    assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE);
-
-    page_buffer.set_current_page_number(&page_buffer,
-        page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
-    page_buffer.read(&page_buffer);
-  }
-
-  // Leaf is found.
-  int64_t i;
-  for (i = 0; i < 110000; ++i) {
-    not_found[i] = true;
-  }
-
-  while(1){
-    assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
-    for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) {
-
+/** void check_post_condition() { */
+/**   page_object_t page_buffer; */
+/**   page_object_constructor(&page_buffer); */
+/**   page_buffer.set_current_page_number(&page_buffer, */
+/**       header_page->get_root_page_offset(header_page) / PAGE_SIZE); */
+/**   page_buffer.read(&page_buffer); */
+/**  */
+/**   while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) { */
+/**     assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE); */
+/**  */
+/**     page_buffer.set_current_page_number(&page_buffer, */
+/**         page_buffer.page.header.one_more_page_offset / PAGE_SIZE); */
+/**     page_buffer.read(&page_buffer); */
+/**   } */
+/**  */
+/**   // Leaf is found. */
+/**   int64_t i; */
+/**   for (i = 0; i < 110000; ++i) { */
+/**     not_found[i] = true; */
+/**   } */
+/**  */
+/**   while(1){ */
+/**     assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE); */
+/**     for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) { */
+/**  */
       /** printf("[page #%ld] key:%ld, value:%s\n",
         *     page_buffer.get_current_page_number(&page_buffer),
         *     page_buffer.page.content.records[i].key,
         *     page_buffer.page.content.records[i].value); */
-
-      not_found[page_buffer.page.content.records[i].key] = false;
-    }
-    if (page_buffer.page.header.one_more_page_offset != 0) {
-      page_buffer.set_current_page_number(&page_buffer,
-          page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
-      page_buffer.read(&page_buffer);
-    } else {
-      break;
-    }
-  }
-
-  printf("** Correctness check **\n");
-  for (i = 1; i <= 100000; ++i) {
-    if (debug_vector[i] != not_found[i]) {
-      printf("Problem occurred. key:%ld\n", i);
-      assert(false);
-    }
-  }
-}
+/**  */
+/**       not_found[page_buffer.page.content.records[i].key] = false; */
+/**     } */
+/**     if (page_buffer.page.header.one_more_page_offset != 0) { */
+/**       page_buffer.set_current_page_number(&page_buffer, */
+/**           page_buffer.page.header.one_more_page_offset / PAGE_SIZE); */
+/**       page_buffer.read(&page_buffer); */
+/**     } else { */
+/**       break; */
+/**     } */
+/**   } */
+/**  */
+/**   printf("** Correctness check **\n"); */
+/**   for (i = 1; i <= 100000; ++i) { */
+/**     if (debug_vector[i] != not_found[i]) { */
+/**       printf("Problem occurred. key:%ld\n", i); */
+/**       assert(false); */
+/**     } */
+/**   } */
+/** } */
 #endif
 
 enum command_case {INVALID, OPEN, INSERT, FIND, DELETE, TEST, QUIT};
@@ -142,6 +142,7 @@ int main(void)
   int64_t key;
   int32_t i;
   bool open_is_called = false;
+  int table_id;
 
 #ifndef TESTING
 #ifdef fsync
@@ -182,8 +183,8 @@ int main(void)
 
 #ifdef DBG
   // temp codes
-  int32_t a = set_new_table(4);
-  exit(0);
+  /** int32_t a = set_new_table_of_fd(4); */
+  /** exit(0); */
 #endif
 
 
@@ -216,7 +217,8 @@ int main(void)
 #ifdef DBG
         printf("pathname: %s\n", input_iterator);
 #endif
-        if (open_db(input_iterator) != 0) {
+        table_id = open_table(input_iterator);
+        if (table_id < 0) {
           printf("(main) DB Opening is failed.\n");  
           exit(1);
         }
@@ -253,7 +255,7 @@ int main(void)
 
 #ifdef TESTING
 TEST_SCRIPT:
-  open_db("test.db");
+  open_table("test.db")
 #endif
 
 #ifndef TESTING
@@ -284,7 +286,8 @@ TEST_SCRIPT:
 #ifdef DBG
         printf("pathname: %s\n", input_iterator);
 #endif
-        if (open_db(input_iterator) != 0) {
+        table_id = open_table(input_iterator);
+        if (table_id < 0) {
           printf("(main) DB Opening is failed.\n");  
           exit(1);
         }
@@ -325,10 +328,10 @@ TEST_SCRIPT:
 #endif
 
         // Insert only if key is not exist.
-        if (find(key) == NULL) {
-          if (insert(key, input_iterator) == 0) {
+        if (find(table_id, key) == NULL) {
+          if (insert(table_id, key, input_iterator) == 0) {
 #ifdef DBG
-            printf("Key: %ld, Value: %s", key, input_iterator);
+            printf("Insertion is successulf, Key: %ld, Value: %s\n", key, input_iterator);
 #endif
           }
 
@@ -354,7 +357,7 @@ TEST_SCRIPT:
 #ifdef DBG
         printf("key: %ld\n", key);
 #endif
-        if((find_result = find(key)) != NULL) {
+        if((find_result = find(table_id, key)) != NULL) {
 #ifdef DBG
           printf("Key #%ld is found. Value : %s\n", key, find_result);
 #else
@@ -382,8 +385,8 @@ TEST_SCRIPT:
         printf("key: %ld\n", key);
 #endif
 
-        if ((find_result = find(key)) != NULL) {
-          if (delete(key) == 0) {
+        if ((find_result = find(table_id, key)) != NULL) {
+          if (delete(table_id, key) == 0) {
 #ifdef DBG
             printf("(delete)[key: %ld, value: %s] is deleted.\n"
                 ,key , find_result);
@@ -414,7 +417,7 @@ TEST_SCRIPT:
         break;
 
       case TEST:
-        testing();
+        testing(table_id);
         break;
 
 
@@ -444,5 +447,6 @@ TEST_SCRIPT:
   free(not_found);
 #endif
 
+  remove_all_mapping_and_close();
   return 0;
 }

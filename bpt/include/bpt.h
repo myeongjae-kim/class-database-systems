@@ -83,16 +83,16 @@ typedef struct __internal_page_element {
 
 // Open database
 // If there is no file, create a db and initialize.
-int open_db (char *pathname);
+int open_table (char *pathname);
 
 
-int insert (int64_t key, char *value);
+int insert (int table_id, int64_t key, char *value);
 
 
-char * find (int64_t key);
+char * find (int table_id, int64_t key);
 
 
-int delete (int64_t key);
+int delete (int table_id, int64_t key);
 
 /*** Interface Ends ***/
 
@@ -108,25 +108,27 @@ int delete (int64_t key);
 void close_db(void);
 
 /* This function returns the number of current page  */
-int64_t get_current_page_number(void);
+// int64_t get_current_page_number(void);
 
 /* This function moves file offset to target page */
-void go_to_page_number(const int64_t page_number);
+void go_to_page_number(const int32_t table_id, const int64_t page_number);
 
 /* This function prints haeder page */
-void print_header_page(void);
+void print_header_page(const int32_t table_id);
 
 /* This function prints a content of page including header */
-void print_page(const int64_t page_number);
+// void print_page(const int32_t table_id, const int64_t page_number);
 
 /* This function writes a header.
  * It checks whether current position is header or not. */
 void write_page_header(const page_header_t * const header);
 
-/* Intilizing database */
-void initialize_db(void);
+/* Intilizing table */
+void init_table(int table_id);
 
+/* close table */
+int close_table(int table_id);
 
-void print_all(void);
+void print_all(int32_t table_id);
 
 #endif

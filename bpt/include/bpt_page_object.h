@@ -32,6 +32,7 @@ typedef struct __page_object {
 
   enum page_type type;
 
+  int32_t table_id;
   int64_t current_page_number;
 
   // methods
@@ -94,7 +95,7 @@ typedef struct __page_object {
 
 } page_object_t;
 
-void page_object_constructor(page_object_t * const this);
+void page_object_constructor(page_object_t * const this, const int32_t table_id);
 
 
 #endif

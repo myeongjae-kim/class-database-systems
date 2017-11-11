@@ -15,11 +15,12 @@ typedef struct __header_page {
 } header_page_t;
 
 
-// Realtime synchronize with db.
+// Realtime synchronize with table.
 typedef struct __header_object {
   struct __header_object *this;
 
   header_page_t page;
+  int32_t table_id;
 
   void (*read)(struct __header_object * const) ;
   void (*write)(const struct __header_object * const);
@@ -45,6 +46,10 @@ typedef struct __header_object {
 
 } header_object_t;
 
-void header_object_constructor(header_object_t * const header);
+void header_object_constructor(header_object_t * const header,
+    const int32_t table_id);
+
+void header_object_destructor(header_object_t * const header);
+
 
 #endif

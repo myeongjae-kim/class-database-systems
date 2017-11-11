@@ -7,11 +7,11 @@
 
 #include "bpt.h"
 
-void free_page_manager_init();
+void free_page_manager_init(int table_id);
 
-int64_t page_alloc();
-bool page_free(const int64_t page_number);
+int64_t page_alloc(int table_id);
+bool page_free(int table_id, const int64_t page_number);
 
-void free_page_clean();
+void free_page_clean(int table_id);
 
 #endif

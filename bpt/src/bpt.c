@@ -15,42 +15,34 @@
 #include "bpt_header_object.h"
 #include "bpt_page_object.h"
 #include "bpt_free_page_manager.h"
-
-// File descriptor.
-int32_t db;
+#include "bpt_fd_table_map.h"
 
 // Current page offset
 // Page moving must be occurred via go_to_page function.
 static off64_t current_page_start_offset = 0;
 
-// header page always exists.
-header_object_t __header_object;
-header_object_t *header_page = &__header_object;
+// header page array always exists.
+extern header_object_t header_page[MAX_TABLE_NUM + 1];
 
 // Clearing page.
 const int8_t empty_page_dummy[PAGE_SIZE] = {0};
 
-
 static bool clear_resource_is_registered = false;
 
-void clear_resource(void) {
-  free_page_clean();
-  close(db);
-}
-
-int64_t get_current_page_number(void) {
-  off64_t current_offset = lseek64(db, 0, SEEK_CUR);
-  if (current_offset < 0) {
-    perror("(get_current_page_offset)");
-    exit(1);
-  }
-  return current_offset / PAGE_SIZE;
-}
+/** int64_t get_current_page_number(void) {
+  *   off64_t current_offset = lseek64(db, 0, SEEK_CUR);
+  *   if (current_offset < 0) {
+  *     perror("(get_current_page_offset)");
+  *     exit(1);
+  *   }
+  *   return current_offset / PAGE_SIZE;
+  * } */
 
 
 // This function change current_page_head of required page.
-void go_to_page_number(const int64_t page_number) {
-  current_page_start_offset = lseek64(db, page_number * PAGE_SIZE, SEEK_SET);
+void go_to_page_number(const int32_t table_id, const int64_t page_number) {
+  int32_t fd = get_fd_of_table(table_id);
+  current_page_start_offset = lseek64(fd, page_number * PAGE_SIZE, SEEK_SET);
   if (current_page_start_offset < 0) {
     perror("(go_to_page) moving file offset failed.");
     assert(false);
@@ -58,11 +50,11 @@ void go_to_page_number(const int64_t page_number) {
   }
 }
 
-void print_all() {
+void print_all(int32_t table_id) {
   page_object_t page_buffer;
-  page_object_constructor(&page_buffer);
+  page_object_constructor(&page_buffer, table_id);
   page_buffer.set_current_page_number(&page_buffer,
-      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+      header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
   page_buffer.read(&page_buffer);
 
   while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
@@ -81,7 +73,8 @@ void print_all() {
     assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
     for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) {
 
-      printf("[page #%ld] key:%ld, value:%s\n",
+      printf("[table_id: %d, page #%ld] key:%ld, value:%s\n",
+          page_buffer.table_id,
           page_buffer.get_current_page_number(&page_buffer),
           page_buffer.page.content.records[i].key,
           page_buffer.page.content.records[i].value);
@@ -101,56 +94,40 @@ void print_all() {
   }
 }
 
-void print_header_page() {
-  header_page->print(header_page);
+void print_header_page(int32_t table_id) {
+  header_page[table_id].print(&header_page[table_id]);
 }
 
 
-void print_page(const int64_t page_number) {
-  page_header_t header;
-
-  go_to_page_number(page_number);
-
-  memset(&header, 0 , sizeof(header));
-  if (read(db, &header, sizeof(header)) < 0) {
-    perror("(print_page)");
-    exit(1);
-  }
-
-  printf(" ** Printing Page Header ** \n");
-  printf("   linked_page_offset: %ld\n",
-      header.linked_page_offset);
-  printf("   is_leaf: %d\n", header.is_leaf);
-  printf("   number_of_keys: %d\n",
-      header.number_of_keys);
-  printf("   one_more_page_offset: %ld\n",
-      header.one_more_page_offset);
-  printf(" **         End          ** \n");
-
-
-  //TODO: print other informations
-}
-
-// This function writes page header to db.
-// linked_page_offset can be a offset of parent or next free page.
-void write_page_header(const page_header_t * const header) {
-  // File pointer must be at header position
-  assert(lseek64(db, 0, SEEK_CUR) % PAGE_SIZE == 0);
-
-  if(write(db, header, sizeof(*header)) < 0) {
-    perror("(write_page_header)");
-    exit(1);
-  }
-  fsync(db);
-}
-
+/** void print_page(const int32_t table_id, const int64_t page_number) {
+  *   page_header_t header;
+  *
+  *   go_to_page_number(table_id, page_number);
+  *
+  *   memset(&header, 0 , sizeof(header));
+  *   if (read(db, &header, sizeof(header)) < 0) {
+  *     perror("(print_page)");
+  *     exit(1);
+  *   }
+  *
+  *   printf(" ** Printing Page Header ** \n");
+  *   printf("   linked_page_offset: %ld\n",
+  *       header.linked_page_offset);
+  *   printf("   is_leaf: %d\n", header.is_leaf);
+  *   printf("   number_of_keys: %d\n",
+  *       header.number_of_keys);
+  *   printf("   one_more_page_offset: %ld\n",
+  *       header.one_more_page_offset);
+  *   printf(" **         End          ** \n");
+  *
+  *
+  *   //TODO: print other informations
+  * } */
 
 // This function is called when a DB file is first generated.
 // Initialize header page and root.
-void initialize_db(void) {
+void init_table(const int32_t table_id) {
   // DB exists
-  assert(db >= 0);
-  assert(lseek64(db, 0, SEEK_CUR) == 0);
 #ifdef DBG
   printf("(initialize_db) DB Initializing start!\n");
 #endif
@@ -163,14 +140,18 @@ void initialize_db(void) {
   // '3' means header page, free page dummy, root page
 
   // Free page offset, Root page offset, number of pages.
-  header_page->set(header_page, 1 * PAGE_SIZE, 2 * PAGE_SIZE, 3);
-  header_page->write(header_page);
+  header_page[table_id].set(&header_page[table_id], 1 * PAGE_SIZE, 2 * PAGE_SIZE, 3);
+  header_page[table_id].write(&header_page[table_id]);
 
   // Go to root page
-  go_to_page_number(2);
+  page_object_t page;
+  memset(&page, 0, sizeof(page));
+  page_object_constructor(&page, table_id);
+  page.current_page_number = 2;
 
   // Write header of root
   // Parent of root is root.
+
 
   // DB has at least three pages.
   // 1. Header page
@@ -178,32 +159,20 @@ void initialize_db(void) {
   // 3. Root page
 
   // Root's parent offset should be zero.
-  page_header_t page_header = {0, 1, 0, {0}, 0};
-  write_page_header(&page_header);
+  page.page.header.is_leaf = true;
+  page.write(&page);
 }
 
 
 // This function finds the leaf page that a key will be stored.
-int64_t find_leaf_page(const int key) {
+int64_t find_leaf_page(int32_t table_id, const int key) {
   int32_t i = 0;
-  int8_t page_buffer[PAGE_SIZE];
-
-  // Get root page
-  go_to_page_number(
-      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
-
-  memset(page_buffer, 0, PAGE_SIZE);
-  if (read(db, page_buffer, PAGE_SIZE) < 0) {
-    perror("(find_leaf_page)");
-    assert(false);
-    exit(1);
-  }
 
   // page object is needed.
   page_object_t page;
-  page_object_constructor(&page);
+  page_object_constructor(&page, table_id);
   page.set_current_page_number(&page, 
-      header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+      header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
   page.read(&page);
 
   // Leaf is not found. Go to found leaf
@@ -250,23 +219,23 @@ int64_t find_leaf_page(const int key) {
 /*     Functions related with Insert() End       */
 
 
-int open_db (char *pathname){
+int open_table (char *pathname){
+
   // setting header page
-  header_object_constructor(header_page);
+  int32_t fd = open(pathname, O_RDWR | O_LARGEFILE);
+  int32_t table_id;
 
-
-  db = open(pathname, O_RDWR | O_LARGEFILE);
-  if (db < 0) {
+  if (fd < 0) {
     // Opening is failed.
 #ifdef DBG
-    printf("(open_db) DB not exists. Create new one.\n");
+    printf("(open_table) DB not exists. Create new one.\n");
 #endif
     // Create file and change its permission
-    db = open(pathname, O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE);
-    if (db < 0) {
+    fd = open(pathname, O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE);
+    if (fd < 0) {
       // Creating is failed.
-      perror("(open_db) DB opening is failed.");
-      fprintf(stderr, "(open_db) Terminate the program\n");
+      perror("(open_table) DB opening is failed.");
+      fprintf(stderr, "(open_table) Terminate the program\n");
       return -1;
     }
 
@@ -274,28 +243,26 @@ int open_db (char *pathname){
     chmod(pathname, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
     // DB is created. Initialize header page and root.
-    initialize_db();
-  }
-
-  // Register file closing function to prevent memory leakage.
-  if (clear_resource_is_registered == false) {
-    atexit(clear_resource);
-    clear_resource_is_registered = true;
+    table_id = set_new_table_of_fd(fd);
+    init_table(table_id);
+  } else{
+    table_id = set_new_table_of_fd(fd);
+    // Table is already initialized.
   }
 
   // Read header
-  header_page->read(header_page);
+  header_page[table_id].read(&header_page[table_id]);
 
   // Initialize free_page_manger.
-  free_page_manager_init();
-  return 0;
+  free_page_manager_init(table_id);
+  return table_id;
 }
 
 
-int insert(int64_t key, char *value){
+int insert(int32_t table_id, int64_t key, char *value){
   int64_t leaf_page;
   page_object_t page;
-  page_object_constructor(&page);
+  page_object_constructor(&page,table_id);
 #ifdef DBG
   printf("(insert) Start insert. key: %ld, value: %s\n", key, value);
 #endif
@@ -311,7 +278,7 @@ int insert(int64_t key, char *value){
 
 
   /** Find a leaf page to insert the value */
-  leaf_page = find_leaf_page(key);
+  leaf_page = find_leaf_page(table_id, key);
 
 
   /** If leaf has room for record, insert */
@@ -329,17 +296,17 @@ int insert(int64_t key, char *value){
 
 
 char find_result_buffer[VALUE_SIZE];
-char * find(int64_t key){
+char * find(int32_t table_id, int64_t key){
   int64_t i = 0;
   page_object_t page_buffer;
 
-  int64_t leaf_page = find_leaf_page(key);
+  int64_t leaf_page = find_leaf_page(table_id, key);
 
   if (leaf_page == 0) {
     return NULL;
   }
 
-  page_object_constructor(&page_buffer);
+  page_object_constructor(&page_buffer, table_id);
   page_buffer.set_current_page_number(&page_buffer, leaf_page);
   page_buffer.read(&page_buffer);
 
@@ -359,16 +326,16 @@ char * find(int64_t key){
 }
 
 
-int delete(int64_t key){
+int delete(int32_t table_id, int64_t key){
   page_object_t page_buffer;
-  int64_t leaf_page = find_leaf_page(key);
+  int64_t leaf_page = find_leaf_page(table_id, key);
 
   if (leaf_page == 0) {
     // Key is not found
     return 1;
   }
 
-  page_object_constructor(&page_buffer);
+  page_object_constructor(&page_buffer, table_id);
   page_buffer.set_current_page_number(&page_buffer, leaf_page);
   page_buffer.read(&page_buffer);
   assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
@@ -382,5 +349,16 @@ int delete(int64_t key){
 }
 
 
+int close_table(int table_id){
+  int fd = get_fd_of_table(table_id);
+  if(close(fd) < 0) {
+    perror("(close_table)");
+    exit(1);
+  }
 
-
+  if(remove_table_id_mapping(table_id) == true) {
+    return 0;
+  } else {
+    return -1;
+  }
+}

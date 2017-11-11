@@ -3,16 +3,20 @@
  * Due Date  : 2017-11-22 */
 
 #include "bpt_fd_table_map.h"
+#include "bpt_free_page_manager.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 static int32_t fd_to_table_map[MAX_TABLE_NUM + 1];
 
-// We don not use zero idx;
+// We do not use zero idx;
 static int32_t *map_iter = fd_to_table_map + 1;
 static const int32_t * const map_iter_begin = fd_to_table_map + 1;
 static const int32_t * const map_iter_end = fd_to_table_map + MAX_TABLE_NUM + 1;
+
+// header pages
+header_object_t header_page[MAX_TABLE_NUM + 1];
 
 int32_t get_fd_of_table(const int32_t table_id) {
   return fd_to_table_map[table_id];
@@ -29,7 +33,12 @@ int32_t set_new_table_of_fd(const int32_t fd) {
     // empty table is found
     if (*map_iter == 0) {
       *map_iter = fd;
-      return (map_iter - (map_iter_begin - 1));
+      int32_t table_id = (map_iter - (map_iter_begin - 1));
+
+      // set new header
+      header_object_constructor(&header_page[table_id], table_id);
+
+      return table_id;
     }
   
     // Go to find position
@@ -48,13 +57,29 @@ int32_t set_new_table_of_fd(const int32_t fd) {
   return -1;
 }
 
-bool delete_table(const int32_t table_id) {
+// This function is called in close_table
+bool remove_table_id_mapping(const int32_t table_id) {
   if (fd_to_table_map[table_id] == 0) {
     fprintf(stderr, "(delete_table) trying to delete empty table\n");
     assert(false);
     return false;
   }
 
-  fd_to_table_map[table_id] = 0;
+  // destruct header information
+  header_object_destructor(&header_page[table_id]);
   return true;
+}
+
+void remove_all_mapping_and_close() {
+  int i;
+  for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
+    if (fd_to_table_map[i] != 0) {
+      free_page_clean(i);
+      if(close(fd_to_table_map[i]) < 0) {
+        perror("remove_all_mapping_and_close");
+        exit(1);
+      }
+      fd_to_table_map[i] = 0;
+    }
+  }
 }

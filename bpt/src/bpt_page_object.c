@@ -4,12 +4,11 @@
 
 #include "bpt_page_object.h"
 #include "bpt_free_page_manager.h"
+#include "bpt_fd_table_map.h"
 #include <string.h>
 #include <assert.h>
 
-extern int32_t db;
-
-extern header_object_t *header_page;
+extern header_object_t header_page[MAX_TABLE_NUM + 1];
 
 /* Finds the appropriate place to
  * split a node that is too big into two.
@@ -30,9 +29,11 @@ static bool __page_read(struct __page_object * const this){
     return false;
   }
 
-  go_to_page_number(this->current_page_number);
+  go_to_page_number(this->table_id, this->current_page_number);
   memset(&this->page, 0, PAGE_SIZE);
-  if (read(db, &this->page, PAGE_SIZE) < 0) {
+
+  int fd = get_fd_of_table(this->table_id);
+  if (read(fd, &this->page, PAGE_SIZE) < 0) {
     perror("(page_object_t->read)");
     assert(false);
     exit(1);
@@ -57,8 +58,9 @@ static bool __page_write(const struct __page_object * const this){
     return false;
   }
 
-  go_to_page_number(this->current_page_number);
-  if (write(db, &this->page, PAGE_SIZE) < 0) {
+  go_to_page_number(this->table_id, this->current_page_number);
+  int fd = get_fd_of_table(this->table_id);
+  if (write(fd, &this->page, PAGE_SIZE) < 0) {
     perror("(page_object_t->write)");
     assert(false);
     exit(1);
@@ -247,10 +249,10 @@ bool __insert_into_new_root(
     struct __page_object * const left, int64_t key,
     struct __page_object * const right){
 
-  int64_t root_page_number = page_alloc();
+  int64_t root_page_number = page_alloc(left->table_id);
 
   page_object_t root;
-  page_object_constructor(&root);
+  page_object_constructor(&root, left->table_id);
 
   root.set_current_page_number(&root, root_page_number);
   root.set_type(&root, INTERNAL_PAGE);
@@ -271,9 +273,9 @@ bool __insert_into_new_root(
   root.write(&root);
 
   // write root offset to header page
-  header_page->set_root_page_offset(header_page,
+  header_page[left->table_id].set_root_page_offset(&header_page[left->table_id],
       root_page_number * PAGE_SIZE);
-  header_page->write(header_page);
+  header_page[left->table_id].write(&header_page[left->table_id]);
 
   return true;
 }
@@ -374,9 +376,9 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
 
   int64_t split = cut(OFFSET_ORDER);
 
-  int64_t new_page_number = page_alloc();
+  int64_t new_page_number = page_alloc(old_node->table_id);
   struct __page_object new_node;
-  page_object_constructor(&new_node);
+  page_object_constructor(&new_node, old_node->table_id);
 
   new_node.set_current_page_number(&new_node, new_page_number);
   new_node.set_type(&new_node, INTERNAL_PAGE);
@@ -411,7 +413,7 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
     old_node->page.header.linked_page_offset;
 
   struct __page_object child;
-  page_object_constructor(&child);
+  page_object_constructor(&child, old_node->table_id);
 
   // Leftmost page
   child.set_current_page_number(&child,
@@ -462,7 +464,7 @@ bool __insert_into_parent(
    */
 
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, left->table_id);
 
   parent.set_current_page_number(&parent, parent_offset / PAGE_SIZE);
   parent.read(&parent);
@@ -535,10 +537,10 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   // Set header of page.
 
   // page_alloc returns empty page
-  int64_t new_leaf_page_number = page_alloc();
+  int64_t new_leaf_page_number = page_alloc(this->table_id);
 
   page_object_t new_leaf;
-  page_object_constructor(&new_leaf);
+  page_object_constructor(&new_leaf, this->table_id);
 
   // link page object and physical page
   new_leaf.set_current_page_number(&new_leaf, new_leaf_page_number);
@@ -712,7 +714,7 @@ void __remove_record_from_page(struct __page_object * const this,
   if (this->page.header.number_of_keys == 0) {
     // Check whether current page is root page
     assert(this->current_page_number * PAGE_SIZE
-        == header_page->get_root_page_offset(header_page));
+        == header_page[this->table_id].get_root_page_offset(&header_page[this->table_id]));
   }
 
   this->write(this);
@@ -721,7 +723,7 @@ void __remove_record_from_page(struct __page_object * const this,
 
 int64_t __get_page_number_of_left(const struct __page_object * const this){
   struct __page_object __parent_page;
-  page_object_constructor(&__parent_page);
+  page_object_constructor(&__parent_page, this->table_id);
 
   __parent_page.set_current_page_number(&__parent_page,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -762,7 +764,7 @@ void __get_k_prime_index_and_its_value(
     int64_t * const k_prime_index, int64_t * const k_prime) {
 
   struct __page_object __parent_page;
-  page_object_constructor(&__parent_page);
+  page_object_constructor(&__parent_page, this->table_id);
 
   __parent_page.set_current_page_number(&__parent_page,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -856,7 +858,7 @@ void  __remove_key_and_offset_from_page(struct __page_object * const this,
   if (this->page.header.number_of_keys == 0) {
     // Check whether current page is root page
     assert(this->current_page_number * PAGE_SIZE
-        == header_page->get_root_page_offset(header_page));
+        == header_page[this->table_id].get_root_page_offset(&header_page[this->table_id]));
   }
 
   this->write(this);
@@ -934,7 +936,7 @@ bool __coalesce_nodes(struct __page_object * this,
   /* All children must now point up to the same parent.
   */
   struct __page_object child_page;
-  page_object_constructor(&child_page);
+  page_object_constructor(&child_page, this->table_id);
   for (i = 0; i < this->page.header.number_of_keys; ++i) {
     child_page.set_current_page_number(&child_page,
         this->page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
@@ -948,7 +950,7 @@ bool __coalesce_nodes(struct __page_object * this,
 
   // Get parent and remove neighbor from parent.
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, this->table_id);
 
   parent.set_current_page_number(&parent,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -958,7 +960,7 @@ bool __coalesce_nodes(struct __page_object * this,
   bool result = __delete_key_and_offset_of_key(&parent, k_prime);
 
   // remove neighbor page
-  if(page_free(neighbor_page->get_current_page_number(neighbor_page))
+  if(page_free(this->table_id, neighbor_page->get_current_page_number(neighbor_page))
       == false) {
     fprintf(stderr, "(__coalesce_leaves) page_free() failed.\n");
     assert(false);
@@ -968,11 +970,11 @@ bool __coalesce_nodes(struct __page_object * this,
   if (parent.get_number_of_keys(&parent) == 0) {
     // It is occurred only in root
     assert(parent.get_current_page_number(&parent) * PAGE_SIZE
-        == header_page->get_root_page_offset(header_page));
+        == header_page[this->table_id].get_root_page_offset(&header_page[this->table_id]));
 
     // Remove root
     // TODO
-    if(page_free(parent.get_current_page_number(&parent))
+    if(page_free(this->table_id, parent.get_current_page_number(&parent))
         == false) {
       fprintf(stderr, "(__coalesce_leaves) page_free() failed.\n");
       assert(false);
@@ -980,7 +982,7 @@ bool __coalesce_nodes(struct __page_object * this,
     }
 
     // Make 'this' as root
-    header_page->set_root_page_offset(header_page,
+    header_page[this->table_id].set_root_page_offset(&header_page[this->table_id],
         this->get_current_page_number(this) * PAGE_SIZE);
     this->page.header.linked_page_offset = 0;
     this->write(this);
@@ -1008,7 +1010,7 @@ bool __redistribute_nodes(struct __page_object * this,
   assert(this->page.header.linked_page_offset
       == neighbor_page->page.header.linked_page_offset);
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, this->table_id);
 
   parent.set_current_page_number(&parent,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -1070,7 +1072,7 @@ bool __redistribute_nodes(struct __page_object * this,
     // change parent of added record's page.
 
     struct __page_object child_page;
-    page_object_constructor(&child_page);
+    page_object_constructor(&child_page, this->table_id);
 
     child_page.current_page_number =
       temp_key_and_offset.page_offset / PAGE_SIZE;
@@ -1143,7 +1145,7 @@ bool __redistribute_nodes(struct __page_object * this,
     // change parent of added record's page.
 
     struct __page_object child_page;
-    page_object_constructor(&child_page);
+    page_object_constructor(&child_page, this->table_id);
 
     child_page.current_page_number =
       temp_key_and_offset.page_offset / PAGE_SIZE;
@@ -1172,6 +1174,7 @@ bool __coalesce_nodes_when_parent_is_root(
     struct __page_object * this, 
     struct __page_object * const parent,
     struct __page_object * neighbor) {
+  const int table_id = this->table_id;
 
   // Here, only special case.
   assert(this->page.header.linked_page_offset
@@ -1197,7 +1200,7 @@ bool __coalesce_nodes_when_parent_is_root(
 
   // Now, 'this' is in left, and 'neighbor_page' is in right.
   struct __page_object leftmost;
-  page_object_constructor(&leftmost);
+  page_object_constructor(&leftmost, this->table_id);
 
   leftmost.set_current_page_number(&leftmost,
       neighbor->page.header.one_more_page_offset / PAGE_SIZE);
@@ -1232,7 +1235,7 @@ bool __coalesce_nodes_when_parent_is_root(
   /* All children must now point up to the same parent.
   */
   struct __page_object child_page;
-  page_object_constructor(&child_page);
+  page_object_constructor(&child_page, this->table_id);
   for (i = 0; i < this->page.header.number_of_keys; ++i) {
     child_page.set_current_page_number(&child_page,
         this->page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
@@ -1244,14 +1247,14 @@ bool __coalesce_nodes_when_parent_is_root(
 
 
   // free parent and neighbor
-  if(page_free(neighbor->get_current_page_number(neighbor))
+  if(page_free(this->table_id, neighbor->get_current_page_number(neighbor))
       == false) {
     fprintf(stderr, "(__coalesce_leaves_when...) page_free() failed.\n");
     assert(false);
     exit(1);
   }
 
-  if(page_free(parent->get_current_page_number(parent))
+  if(page_free(this->table_id, parent->get_current_page_number(parent))
       == false) {
     fprintf(stderr, "(__coalesce_leaves_when...) page_free() failed.\n");
     assert(false);
@@ -1259,7 +1262,7 @@ bool __coalesce_nodes_when_parent_is_root(
   }
 
   // Make 'this' as root
-  header_page->set_root_page_offset(header_page,
+  header_page[table_id].set_root_page_offset(&header_page[table_id],
       this->get_current_page_number(this) * PAGE_SIZE);
   this->page.header.linked_page_offset = 0;
   this->write(this);
@@ -1284,7 +1287,7 @@ bool __redistribute_nodes_when_parent_is_root(
 
 
   struct __page_object leftmost;
-  page_object_constructor(&leftmost);
+  page_object_constructor(&leftmost, this->table_id);
 
   leftmost.set_current_page_number(&leftmost,
       neighbor->page.header.one_more_page_offset / PAGE_SIZE);
@@ -1341,6 +1344,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
     const int64_t key){
   // This function is called only current page is INTERNAL_PAGE.
   assert(this->get_type(this) == INTERNAL_PAGE);
+  int table_id = this->table_id;
 
   // Remove key and value from page.
 
@@ -1351,7 +1355,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
   // Do nothing.
   if (this->get_current_page_number(this) * PAGE_SIZE
-      == header_page->get_root_page_offset(header_page)) {
+      == header_page[table_id].get_root_page_offset(&header_page[table_id])) {
     return true;
   }
 
@@ -1390,7 +1394,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
   // Get parent page first.
 
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, this->table_id);
 
   parent.set_current_page_number(&parent,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -1416,7 +1420,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
     // Here is last problem place!!!
     // This case is occurred only when parent is root.
     assert(parent.current_page_number * PAGE_SIZE
-        == header_page->get_root_page_offset(header_page));
+        == header_page[table_id].get_root_page_offset(&header_page[table_id]));
     k_prime = -1;
     /** assert(false); */
   } else {
@@ -1426,7 +1430,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
   // Get neighbor page
   struct __page_object neighbor;
-  page_object_constructor(&neighbor);
+  page_object_constructor(&neighbor, this->table_id);
 
   neighbor.set_current_page_number(&neighbor,
       parent.page.content.key_and_offsets[k_prime_index].page_offset
@@ -1484,6 +1488,7 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 bool __coalesce_leaves(struct __page_object * this,
     struct __page_object * neighbor_page,
     const int64_t k_prime) {
+  const int table_id = this->table_id;
   // Normal situations: 'this' is left. 'neighbor_page' is right.
 
   // If 'neighbor_page' is left and 'this' is right, swap.
@@ -1526,7 +1531,7 @@ bool __coalesce_leaves(struct __page_object * this,
 
   // Get parent and remove neighbor from parent.
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, this->table_id);
 
   parent.set_current_page_number(&parent,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -1540,7 +1545,7 @@ bool __coalesce_leaves(struct __page_object * this,
   /**   page_object_t page_buffer;
    *   page_object_constructor(&page_buffer);
    *   page_buffer.set_current_page_number(&page_buffer,
-   *       header_page->get_root_page_offset(header_page) / PAGE_SIZE);
+   *       header_page[table_id].get_root_page_offset(header_page[table_id]) / PAGE_SIZE);
    *   page_buffer.read(&page_buffer);
    *
    *   while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
@@ -1565,7 +1570,7 @@ bool __coalesce_leaves(struct __page_object * this,
   ///////////////////////////////////////////////////////
 
   // remove neighbor page.
-  if(page_free(neighbor_page->get_current_page_number(neighbor_page))
+  if(page_free(this->table_id, neighbor_page->get_current_page_number(neighbor_page))
       == false) {
     fprintf(stderr, "(__coalesce_leaves) page_free() failed.\n");
     assert(false);
@@ -1576,11 +1581,11 @@ bool __coalesce_leaves(struct __page_object * this,
   if (parent.get_number_of_keys(&parent) == 0) {
     // It is occurred only in root
     assert(parent.get_current_page_number(&parent) * PAGE_SIZE
-        == header_page->get_root_page_offset(header_page));
+        == header_page[table_id].get_root_page_offset(&header_page[table_id]));
 
     // Remove root
     // TODO
-    if(page_free(parent.get_current_page_number(&parent))
+    if(page_free(this->table_id, parent.get_current_page_number(&parent))
         == false) {
       fprintf(stderr, "(__coalesce_leaves) page_free() failed.\n");
       assert(false);
@@ -1588,7 +1593,7 @@ bool __coalesce_leaves(struct __page_object * this,
     }
 
     // Make 'this' as root
-    header_page->set_root_page_offset(header_page,
+    header_page[table_id].set_root_page_offset(&header_page[table_id],
         this->get_current_page_number(this) * PAGE_SIZE);
     this->page.header.linked_page_offset = 0;
     this->write(this);
@@ -1616,7 +1621,7 @@ bool __redistribute_leaves(struct __page_object * this,
   assert(this->page.header.linked_page_offset
       == neighbor_page->page.header.linked_page_offset);
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, this->table_id);
 
   parent.set_current_page_number(&parent,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -1734,7 +1739,7 @@ bool __redistribute_leaves(struct __page_object * this,
 
 bool __is_this_rightmost_in_parent(const struct __page_object * const this) {
   struct __page_object parent;
-  page_object_constructor(&parent);
+  page_object_constructor(&parent, this->table_id);
 
   parent.set_current_page_number(&parent,
       this->page.header.linked_page_offset / PAGE_SIZE);
@@ -1752,6 +1757,7 @@ bool __is_this_rightmost_in_parent(const struct __page_object * const this) {
 
 bool __delete_record_of_key(struct __page_object * const this,
     const int64_t key){
+  const int table_id = this->table_id;
   // This function is called only current page is LEAF_PAGE.
   assert(this->get_type(this) == LEAF_PAGE);
 
@@ -1765,7 +1771,7 @@ bool __delete_record_of_key(struct __page_object * const this,
 
   // Do nothing.
   if (this->get_current_page_number(this) * PAGE_SIZE
-      == header_page->get_root_page_offset(header_page)) {
+      == header_page[table_id].get_root_page_offset(&header_page[table_id])) {
     return true;
   }
 
@@ -1833,7 +1839,7 @@ bool __delete_record_of_key(struct __page_object * const this,
 
   // Get neighbor page
   struct __page_object neighbor_page;
-  page_object_constructor(&neighbor_page);
+  page_object_constructor(&neighbor_page, this->table_id);
 
   neighbor_page.set_current_page_number(&neighbor_page, neighbor_page_number);
   neighbor_page.read(&neighbor_page);
@@ -1874,9 +1880,10 @@ bool __delete_record_of_key(struct __page_object * const this,
 }
 
 
-void page_object_constructor(page_object_t * const this) {
+void page_object_constructor(page_object_t * const this, const int32_t table_id) {
   memset(this, 0, sizeof(*this));
   this->this = this;
+  this->table_id = table_id;
 
   this->read = __page_read;
   this->write = __page_write;
@@ -1909,5 +1916,4 @@ void page_object_constructor(page_object_t * const this) {
 
 
   this->delete_record_of_key = __delete_record_of_key;
-
 }
