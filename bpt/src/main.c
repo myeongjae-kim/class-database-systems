@@ -16,6 +16,7 @@
 #include "bpt_header_object.h"
 #include "bpt_page_object.h"
 #include "bpt_free_page_manager.h"
+#include "bpt_fd_table_map.h"
 extern header_object_t *header_page;
 extern int32_t db;
 // Delete end
@@ -177,6 +178,14 @@ int main(void)
 #ifdef TESTING
   goto TEST_SCRIPT;
 #endif
+
+
+#ifdef DBG
+  // temp codes
+  int32_t a = set_new_table(4);
+  exit(0);
+#endif
+
 
   // Open database first
 #ifndef TESTING

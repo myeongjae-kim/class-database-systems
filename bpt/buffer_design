@@ -1,0 +1,25 @@
+일단 fb랑 file descriptor mapping부터.
+사이즈 11개짜리 배열 만들자. 0번째는 쓰지 말고, 1번~10번까지가 table_id.
+array[table_id]로 접근하면 fd가 나온다. pointer가 돌면서 빈공간에 fd 저장하고
+idx를 return해준다. idx는 table_id
+
+bpt_fd_table_map.h
+bpt_fd_table_map.c
+
+
+일단 함수 원형 맟줘주자. 난 init_db 원래 있었다.
+아, 원래 내가 갖고있던건 init_table로 바꿔주고, init_db 만들자.
+init_db는 buffer manager 초기화 해주는거다.
+
+init_table은 open_table 안에서 불리는거고
+init_db는 그냥 프로그램 시작하면 불리고, 프로그램 끝날 때
+shutdown_db 불리게 하자. init_db 부를 때 atexit으로 shutdown_db 등록해놔야겠다.
+
+내가 원래 가지고 있던 close_db도 close_table로 바꾸고
+
+제일 먼저 해야할것 bpt_fd_table_map 구현하는거.
+그리고 open_db, close_db를 open_table, close_table로 구현하자.
+그 다음에 insert, find, delete를 table_id로 관리하게 구현
+
+여기까지는 준비 과정이고, 마지막으로
+init_db, shutdown_db 구현하면서 버퍼매니저 만들면 되겠다.
