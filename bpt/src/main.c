@@ -173,6 +173,10 @@ int main(void)
   setvbuf(stdin, NULL, _IONBF, 0);
 #endif
 
+  // Initialize buffer
+  init_db(BUF_FRAME_NUM);
+
+
   // initializing buffer.
   memset(command_input, 0 , sizeof(command_input));
 
@@ -191,6 +195,7 @@ int main(void)
     * printf("%s\n", find(table1, 100));
     * printf("%s\n", find(table2, 200));
     * exit(0); */
+
 #endif
 
 
@@ -479,5 +484,6 @@ end:
 #endif
 
   remove_all_mapping_and_close();
+  shutdown_db();
   return 0;
 }

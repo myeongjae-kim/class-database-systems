@@ -19,6 +19,7 @@
 #define DBG
 // #define TESTING
 
+#define BUF_FRAME_NUM 5
 
 #include <stdint.h>
 #include <stdio.h>
@@ -83,6 +84,9 @@ typedef struct __internal_page_element {
 
 // Open database
 // If there is no file, create a db and initialize.
+int init_db (int buf_num);
+
+
 int open_table (char *pathname);
 
 
@@ -93,6 +97,13 @@ char * find (int table_id, int64_t key);
 
 
 int delete (int table_id, int64_t key);
+
+
+int close_table(int table_id);
+
+
+int shutdown_db(void);
+
 
 /*** Interface Ends ***/
 
@@ -105,7 +116,7 @@ int delete (int table_id, int64_t key);
 /** Utility functions **/
 
 /* It is registered as exit handler. It closes a database file. */
-void close_db(void);
+// void close_db(void);
 
 /* This function returns the number of current page  */
 // int64_t get_current_page_number(void);
@@ -126,8 +137,7 @@ void write_page_header(const page_header_t * const header);
 /* Intilizing table */
 void init_table(int table_id);
 
-/* close table */
-int close_table(int table_id);
+
 
 void print_all(int32_t table_id);
 

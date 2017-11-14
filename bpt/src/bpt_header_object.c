@@ -38,7 +38,7 @@ static void __write_header_to_db(const header_object_t * const this) {
     perror("(header_object_t.write_to_db)");
     exit(1);
   }
-  fsync(db);
+  fsync(fd);
 }
 
 static void __set__header_page(struct __header_object * const this,

@@ -46,12 +46,11 @@ typedef struct __frame_object {
   bool (*write)(struct __frame_object* const this);
 } frame_object_t;
 
-void frame_object_constructor(frame_object_t * const this);
-
+// void frame_object_constructor(frame_object_t * const this);
 
 typedef struct __buf_mgr {
   frame_object_t * frames;
-  int32_t num_of_frame;
+  int32_t num_of_frames;
 
   const frame_object_t * frame_iter_begin;
   const frame_object_t * frame_iter_end;
@@ -66,19 +65,9 @@ typedef struct __buf_mgr {
       const int32_t table_id, const int64_t page_number);
   bool (*release_page)(struct __buf_mgr * const this,
       const int32_t table_id, const int64_t page_number);
-
-  // Every page allocation should be occurred via buffer manager
-  // TODO original page_alloc and page_free will be changed to
-  // __page_alloc and __page_free
-  int64_t (*page_alloc)(struct __buf_mgr * const this,
-      const int32_t table_id);
-  int64_t (*page_free)(struct __buf_mgr * const this,
-      const int32_t table_id, const int64_t page_number);
 } buf_mgr_t;
 
-void buf_mgr_constructor(buf_mgr_t * const this);
+void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frame);
 void buf_mgr_destructor(buf_mgr_t * const this);
-
-
 
 #endif

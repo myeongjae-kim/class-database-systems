@@ -16,6 +16,7 @@
 #include "bpt_page_object.h"
 #include "bpt_free_page_manager.h"
 #include "bpt_fd_table_map.h"
+#include "bpt_buffer_manager.h"
 
 // Current page offset
 // Page moving must be occurred via go_to_page function.
@@ -365,4 +366,14 @@ int close_table(int table_id){
   } else {
     return -1;
   }
+}
+
+extern buf_mgr_t buf_mgr;
+
+int init_db (int buf_num){
+  buf_mgr_constructor(&buf_mgr, buf_num);
+}
+
+int shutdown_db(void) {
+  buf_mgr_destructor(&buf_mgr);
 }

@@ -1,6 +1,7 @@
 #include "bpt.h"
 #include "bpt_buffer_manager.h"
 #include "bpt_fd_table_map.h"
+#include "bpt_free_page_manager.h"
 
 #include <string.h>
 #include <assert.h>
@@ -72,7 +73,7 @@ static bool __write(struct __frame_object* const this) {
   return true;
 }
 
-void frame_object_constructor(frame_object_t * const this){
+static void frame_object_constructor(frame_object_t * const this){
   memset(this, 0, sizeof(*this));
   this->set = __set;
   this->reset = __reset;
@@ -88,7 +89,7 @@ void frame_object_constructor(frame_object_t * const this){
 frame_object_t * __find_frame(struct __buf_mgr * const this,
     const int32_t table_id, const int64_t page_number) {
   int i;
-  for (i = 0; i < this->num_of_frame; ++i) {
+  for (i = 0; i < this->num_of_frames; ++i) {
     if (this->frame_iter->table_id == table_id
         && this->frame_iter->page_offset == page_number * PAGE_SIZE) {
       return(frame_object_t*)this->frame_iter;
@@ -183,5 +184,41 @@ bool __release_page(struct __buf_mgr * const this,
 }
 
 
-// TODO
-// free page mananger will call buf_mgr->page_alloc
+void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frames){
+  int i;
+  this->num_of_frames = num_of_frames;
+  this->frames = (frame_object_t*)malloc(num_of_frames * sizeof(*this->frames));
+  for (i = 0; i < num_of_frames; ++i) {
+    frame_object_constructor(&this->frames[i]);
+  }
+
+  this->frame_iter_begin = this->frames;
+  this->frame_iter_end = this->frames + num_of_frames;
+  this->frame_iter = this->frame_iter_begin;
+
+  // dummy head
+  this->LRU_queue_head = (frame_object_t*)calloc(1,
+      sizeof(*this->LRU_queue_head));
+
+  // add all frame to LRU list
+  frame_object_t *LRU_iter = this->LRU_queue_head;
+  for (i = 0; i < num_of_frames; ++i) {
+    LRU_iter->LRU_next = &this->frames[i];
+
+    // go to next frame
+    LRU_iter = LRU_iter->LRU_next;
+
+    // tail is last added frame
+    this->LRU_queue_tail = LRU_iter;
+  }
+  assert(LRU_iter->LRU_next == NULL);
+
+  this->request_page = __request_page;
+  this->release_page = __release_page;
+}
+
+
+void buf_mgr_destructor(buf_mgr_t * const this){
+  free(this->frames);
+  memset(this, 0, sizeof(*this));
+}

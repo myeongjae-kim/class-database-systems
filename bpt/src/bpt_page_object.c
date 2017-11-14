@@ -65,7 +65,7 @@ static bool __page_write(const struct __page_object * const this){
     assert(false);
     exit(1);
   }
-  fsync(db);
+  fsync(fd);
 
   return true;
 }

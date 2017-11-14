@@ -35,6 +35,8 @@ $(TARGET): $(TARGET_SRC) $(SRCS_FOR_LIB)
 		-c $(SRCDIR)bpt_free_page_manager.c
 	$(CC) $(CFLAGS) -o $(SRCDIR)bpt_fd_table_map.o\
 		-c $(SRCDIR)bpt_fd_table_map.c
+	$(CC) $(CFLAGS) -o $(SRCDIR)bpt_buffer_manager.o\
+		-c $(SRCDIR)bpt_buffer_manager.c
 	# $(CC) $(CFLAGS) -o $(OBJS_FOR_LIB) -c $(SRCS_FOR_LIB)
 	make static_library
 	$(CC) $(CFLAGS) -o $@ $^ -L $(LIBS) -lbpt
