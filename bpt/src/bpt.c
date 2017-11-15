@@ -93,6 +93,9 @@ void print_all(int32_t table_id) {
       break;
     }
   }
+
+
+  page_object_destructor(&page_buffer);
 }
 
 void print_header_page(int32_t table_id) {
@@ -149,6 +152,7 @@ void init_table(const int32_t table_id) {
   memset(&page, 0, sizeof(page));
   page_object_constructor(&page, table_id);
   page.current_page_number = 2;
+  page.read(&page);
 
   // Write header of root
   // Parent of root is root.
@@ -162,6 +166,9 @@ void init_table(const int32_t table_id) {
   // Root's parent offset should be zero.
   page.page.header.is_leaf = true;
   page.write(&page);
+
+
+  page_object_destructor(&page);
 }
 
 
@@ -214,7 +221,10 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
   }
 
 
-  return page.get_current_page_number(&page);
+  bool rt_value = page.get_current_page_number(&page);
+  page_object_destructor(&page);
+
+  return rt_value;
 }
 
 /*     Functions related with Insert() End       */
@@ -292,7 +302,9 @@ int insert(int32_t table_id, int64_t key, char *value){
   }
 
   /** If leaf has no room for record, split and insert */
-  return page.insert_record_after_splitting(&page, &record);
+  bool rt_value = page.insert_record_after_splitting(&page, &record);
+  page_object_destructor(&page);
+  return rt_value;
 }
 
 
@@ -311,19 +323,24 @@ char * find(int32_t table_id, int64_t key){
   page_buffer.set_current_page_number(&page_buffer, leaf_page);
   page_buffer.read(&page_buffer);
 
+  char* rt_value;
+
   for (i = 0; i < page_buffer.get_number_of_keys(&page_buffer); ++i) {
     if (page_buffer.page.content.records[i].key == (int64_t)key) {
       break;
     }
   }
   if (i == page_buffer.get_number_of_keys(&page_buffer)) {
-    return NULL;
+    rt_value = NULL;
   } else {
     memset(find_result_buffer, 0, sizeof(find_result_buffer));
     memcpy(find_result_buffer, page_buffer.page.content.records[i].value,
         sizeof(find_result_buffer));
-    return find_result_buffer;
+    rt_value = find_result_buffer;
   }
+
+  page_object_destructor(&page_buffer);
+  return rt_value;
 }
 
 
@@ -341,12 +358,16 @@ int delete(int32_t table_id, int64_t key){
   page_buffer.read(&page_buffer);
   assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
 
+  int rt_value;
   if (page_buffer.delete_record_of_key(&page_buffer, key) == false) {
     // Deletion is failed.
-    return 1;
+    rt_value = 1;
+  } else {
+    rt_value = 0;
   }
 
-  return 0;
+  page_object_destructor(&page_buffer);
+  return rt_value;
 }
 
 

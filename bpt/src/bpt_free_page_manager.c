@@ -19,13 +19,13 @@ static int8_t __page_buffer[PAGE_SIZE];
 
 // Head. This value will be always 1.
 // Page #1 is a dummy free header. It will always be free page.
-static const int8_t __head_page_number = 1;
 static int64_t __tail_page_number[MAX_TABLE_NUM + 1];
 
 
 // These variable are in bpt.c
 extern const int8_t empty_page_dummy[PAGE_SIZE];
 extern header_object_t header_page[MAX_TABLE_NUM + 1];
+static int64_t __head_free_page_number[MAX_TABLE_NUM + 1];
 
 // This function check whether the page is free page of not
 static bool __is_free_page(const int table_id, const int64_t page_number) {
@@ -148,7 +148,7 @@ static int64_t __find_prev_free_page_number_of(int table_id,
   int64_t current_free_page_number;
 
   // To read head page first, set next_free_page_offset as head free page.
-  *next_free_page_offset = __head_page_number * PAGE_SIZE;
+  *next_free_page_offset = __head_free_page_number[table_id] * PAGE_SIZE;
 
   // Read head free page
   do{
@@ -251,11 +251,15 @@ static bool __delete_free_page_in_last_of_db(int table_id,
 
 // Find the last free page
 void free_page_manager_init(int table_id) {
-  int64_t current_free_page_offset = __head_page_number * PAGE_SIZE;
+  __head_free_page_number[table_id]
+    = header_page[table_id].page.free_page_offset / PAGE_SIZE;
+
+
+  int64_t current_free_page_offset = __head_free_page_number[table_id] * PAGE_SIZE;
   int64_t * const next_free_page_offset = (int64_t*)__page_buffer;
 
   // Read dummy page
-  go_to_page_number(table_id, __head_page_number);
+  go_to_page_number(table_id, __head_free_page_number[table_id]);
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
   int fd = get_fd_of_table(table_id);
   if (read(fd, __page_buffer, PAGE_SIZE) < 0) {
@@ -272,7 +276,7 @@ void free_page_manager_init(int table_id) {
       header_page[table_id].get_number_of_pages(&header_page[table_id]) * PAGE_SIZE;
 
     // Write head page
-    go_to_page_number(table_id, __head_page_number);
+    go_to_page_number(table_id, __head_free_page_number[table_id]);
     if (write(fd, __page_buffer, PAGE_SIZE) < 0) {
       perror("(free_page_manager_init)");
       assert(false);
@@ -293,7 +297,7 @@ void free_page_manager_init(int table_id) {
 
 #ifdef DBG
     // Check whether current free page is a real free page.
-    if (current_free_page_offset / PAGE_SIZE != __head_page_number
+    if (current_free_page_offset / PAGE_SIZE != __head_free_page_number[table_id]
         && __is_free_page(table_id, current_free_page_offset / PAGE_SIZE) == false) {
       fprintf(stderr, "(free_page_manager_init)");
       fprintf(stderr, "current page is not a free page");
@@ -339,7 +343,7 @@ int64_t page_alloc(int table_id){
     __add(table_id, header_page[table_id].get_number_of_pages(&header_page[table_id]));
   }
 
-  go_to_page_number(table_id, __head_page_number);
+  go_to_page_number(table_id, __head_free_page_number[table_id]);
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
   int fd = get_fd_of_table(table_id);
   if (read(fd, __page_buffer, PAGE_SIZE) < 0) {
@@ -366,7 +370,7 @@ int64_t page_alloc(int table_id){
   }
 
   // Write it to head
-  go_to_page_number(table_id, __head_page_number);
+  go_to_page_number(table_id, __head_free_page_number[table_id]);
   if (write(fd, __page_buffer, PAGE_SIZE) < 0) {
     perror("(page_alloc)\n");
     assert(false);
@@ -411,7 +415,7 @@ bool page_free(int table_id, const int64_t page_number){
 
 
   // Write head's content to this page and make head pointing this page.
-  go_to_page_number(table_id, __head_page_number);
+  go_to_page_number(table_id, __head_free_page_number[table_id]);
   memcpy(__page_buffer, empty_page_dummy, PAGE_SIZE);
   if (read(fd, __page_buffer, PAGE_SIZE) < 0) {
     perror("(page_alloc)\n");
@@ -434,7 +438,7 @@ bool page_free(int table_id, const int64_t page_number){
 
   // Make head pointing this page
 
-  go_to_page_number(table_id, __head_page_number);
+  go_to_page_number(table_id, __head_free_page_number[table_id]);
   if (write(fd, __page_buffer, PAGE_SIZE) < 0) {
     perror("(page_alloc)\n");
     assert(false);
@@ -489,7 +493,7 @@ void free_page_clean(int table_id){
   // Iterate whole free page list and remove free page
   // which is following last content page.
 
-  int64_t current_free_page = __head_page_number;
+  int64_t current_free_page = __head_free_page_number[table_id];
   int64_t *next_free_page_offset = (int64_t*)__page_buffer;
   int fd = get_fd_of_table(table_id);
   while (1) {

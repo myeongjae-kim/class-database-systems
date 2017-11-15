@@ -42,9 +42,11 @@ static bool __reset(struct __frame_object* const this){
 static bool __read(struct __frame_object* const this) {
   assert(this->table_id != 0);
   assert(this->page_offset != 0);
+
+  go_to_page_number(this->table_id, this->page_offset / PAGE_SIZE);
+
   int fd = get_fd_of_table(this->table_id);
   assert(fd != 0);
-  go_to_page_number(fd, this->page_offset / PAGE_SIZE);
 
   memset(this->page, 0, PAGE_SIZE);
   if (read(fd, this->page, PAGE_SIZE) < 0) {
@@ -58,10 +60,13 @@ static bool __read(struct __frame_object* const this) {
 static bool __write(struct __frame_object* const this) {
   assert(this->table_id != 0);
   assert(this->page_offset != 0);
+
+  go_to_page_number(this->table_id, this->page_offset / PAGE_SIZE);
+
+
   int fd = get_fd_of_table(this->table_id);
   assert(fd != 0);
 
-  go_to_page_number(fd, this->page_offset / PAGE_SIZE);
   if (write(fd, this->page, PAGE_SIZE) < 0) {
     perror("(frame_object_t->read)");
     assert(false);
@@ -75,6 +80,9 @@ static bool __write(struct __frame_object* const this) {
 
 static void frame_object_constructor(frame_object_t * const this){
   memset(this, 0, sizeof(*this));
+
+  this->page = (struct __page * )&this->frame;
+
   this->this = this;
   this->set = __set;
   this->reset = __reset;
@@ -221,8 +229,13 @@ void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frames){
 
 
 void buf_mgr_destructor(buf_mgr_t * const this){
-  //TODO: write every dirty page to disk before free.
-  
+  //write every dirty page to disk before free.
+  int i;
+  for (i = 0; i < this->num_of_frames; ++i) {
+    if (this->frames[i].table_id != 0) {
+      this->frames[i].write(&this->frames[i]);
+    }
+  }
   
   free(this->frames);
   memset(this, 0, sizeof(*this));

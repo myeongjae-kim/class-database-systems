@@ -13,7 +13,7 @@
 #define _LARGEFILE64_SOURCE
 
 // If fsync(x); is defined, DB will work as buffered I/O
-// #define fsync(x);
+#define fsync(x);
 // #define assert(x);
 
 #define DBG
