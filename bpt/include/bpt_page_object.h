@@ -6,6 +6,7 @@
 #define __BPT_PAGE_OBJECT_H__
 
 #include "bpt.h"
+#include "bpt_buffer_manager.h"
 
 // the size of page_content_t is 'PAGE_SIZE - HEADER_SIZE'
   // page content can be interpreted as leaf page of internal page.
@@ -29,6 +30,7 @@ typedef struct __page_object {
 
   // page content can be interpreted as leaf page of internal page.
   struct __page page;
+  struct __frame_object * frame;
 
   enum page_type type;
 
@@ -96,6 +98,7 @@ typedef struct __page_object {
 } page_object_t;
 
 void page_object_constructor(page_object_t * const this, const int32_t table_id);
+void page_object_destructor(page_object_t * const this);
 
 
 #endif

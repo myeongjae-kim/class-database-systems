@@ -9,6 +9,8 @@
 #include <assert.h>
 
 extern header_object_t header_page[MAX_TABLE_NUM + 1];
+extern buf_mgr_t buf_mgr;
+
 
 /* Finds the appropriate place to
  * split a node that is too big into two.
@@ -29,14 +31,22 @@ static bool __page_read(struct __page_object * const this){
     return false;
   }
 
-  go_to_page_number(this->table_id, this->current_page_number);
-  memset(&this->page, 0, PAGE_SIZE);
-
-  int fd = get_fd_of_table(this->table_id);
-  if (read(fd, &this->page, PAGE_SIZE) < 0) {
-    perror("(page_object_t->read)");
-    assert(false);
-    exit(1);
+  if (this->frame != NULL){
+    if (this->frame->table_id == this->table_id
+      && this->frame->page_offset / PAGE_SIZE == this->current_page_number) {
+      // same page. do nothing
+    } else {
+      // different page. release and request
+      buf_mgr.release_frame(&buf_mgr, this->frame);
+      this->frame = buf_mgr.request_frame(&buf_mgr,
+          this->table_id, this->current_page_number);
+      memcpy(&this->page, this->frame->page, PAGE_SIZE);
+    }
+  } else {
+    // no frame. read it.
+    this->frame = buf_mgr.request_frame(&buf_mgr,
+        this->table_id, this->current_page_number);
+    memcpy(&this->page, this->frame->page, PAGE_SIZE);
   }
 
   // Set page type.
@@ -58,14 +68,8 @@ static bool __page_write(const struct __page_object * const this){
     return false;
   }
 
-  go_to_page_number(this->table_id, this->current_page_number);
-  int fd = get_fd_of_table(this->table_id);
-  if (write(fd, &this->page, PAGE_SIZE) < 0) {
-    perror("(page_object_t->write)");
-    assert(false);
-    exit(1);
-  }
-  fsync(fd);
+  memcpy(this->frame->page, &this->page, PAGE_SIZE);
+  this->frame->is_dirty = true;
 
   return true;
 }
@@ -277,6 +281,8 @@ bool __insert_into_new_root(
       root_page_number * PAGE_SIZE);
   header_page[left->table_id].write(&header_page[left->table_id]);
 
+  page_object_destructor(&root);
+
   return true;
 }
 
@@ -433,12 +439,15 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
       new_node.current_page_number * PAGE_SIZE;
     child.write(&child);
   }
+  page_object_destructor(&child);
 
   // Do not forget to write pages.
   old_node->write(old_node);
   new_node.write(&new_node);
 
-  return __insert_into_parent(old_node, k_prime, &new_node);
+  int rt_value = __insert_into_parent(old_node, k_prime, &new_node);
+  page_object_destructor(&new_node);
+  return rt_value;
 }
 
 bool __insert_into_parent(
@@ -484,8 +493,12 @@ bool __insert_into_parent(
    * to preserve the B+ tree properties.
    */
 
-  return __insert_into_node_after_splitting(
+  bool rt_value =  __insert_into_node_after_splitting(
       &parent, left_index, key, right);
+
+  page_object_destructor(&parent);
+
+  return rt_value;
 }
 
 
@@ -620,7 +633,11 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   new_leaf.write(&new_leaf);
 
   // call insert_into_parent function
-  return __insert_into_parent(leaf, new_key, &new_leaf);
+  bool rt_value =  __insert_into_parent(leaf, new_key, &new_leaf);
+
+  page_object_destructor(&new_leaf);
+
+  return rt_value;
 }
 
 
@@ -748,6 +765,9 @@ int64_t __get_page_number_of_left(const struct __page_object * const this){
   //
   // (i - 1) means the left page.
   // Even though i == 0, it is okay.
+  
+  page_object_destructor(&__parent_page);
+
   if (i == 0) {
     return parent_page->page.header.one_more_page_offset / PAGE_SIZE;
   } else{
@@ -805,6 +825,7 @@ void __get_k_prime_index_and_its_value(
   // neighbor page must exist!
   assert(i != parent_page->page.header.number_of_keys);
 
+  page_object_destructor(&__parent_page);
 
 }
 
@@ -988,6 +1009,9 @@ bool __coalesce_nodes(struct __page_object * this,
     this->write(this);
   }
 
+  page_object_destructor(&child_page);
+  page_object_destructor(&parent);
+
   return result;
 
 }
@@ -1082,6 +1106,8 @@ bool __redistribute_nodes(struct __page_object * this,
       this->current_page_number * PAGE_SIZE;
 
     child_page.write(&child_page);
+
+    page_object_destructor(&child_page);
   } else {
     // 2. neighbor_page -> this
 
@@ -1156,7 +1182,9 @@ bool __redistribute_nodes(struct __page_object * this,
 
     child_page.write(&child_page);
 
+    page_object_destructor(&child_page);
   }
+
 
 
   // Write to disk
@@ -1164,11 +1192,15 @@ bool __redistribute_nodes(struct __page_object * this,
   neighbor_page->write(neighbor_page);
   parent.write(&parent);
 
+  page_object_destructor(&parent);
+
+
   return true;
 
 
 }
 
+//TODO: below, destructor is needed.
 
 bool __coalesce_nodes_when_parent_is_root(
     struct __page_object * this, 
@@ -1719,12 +1751,6 @@ bool __redistribute_leaves(struct __page_object * this,
 
 
 
-
-
-
-
-
-
     parent.page.content.key_and_offsets[k_prime_index].key
       = this->page.content.records[0].key;
   }
@@ -1884,6 +1910,7 @@ void page_object_constructor(page_object_t * const this, const int32_t table_id)
   memset(this, 0, sizeof(*this));
   this->this = this;
   this->table_id = table_id;
+  this->frame = NULL;
 
   this->read = __page_read;
   this->write = __page_write;
@@ -1916,4 +1943,13 @@ void page_object_constructor(page_object_t * const this, const int32_t table_id)
 
 
   this->delete_record_of_key = __delete_record_of_key;
+}
+
+
+// release frame
+void page_object_destructor(page_object_t * const this) {
+  if (this->frame != NULL) {
+    buf_mgr.release_frame(&buf_mgr, this->frame);
+  }
+  memset(this, 0, sizeof(*this));
 }

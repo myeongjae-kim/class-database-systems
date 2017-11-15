@@ -18,6 +18,7 @@ int shutdown_db(void);    // memory free
 
 // Frame object
 typedef struct __frame_object {
+  struct __frame_object *this;
   // Project specification
   uint8_t frame[PAGE_SIZE];
   int32_t table_id;
@@ -49,6 +50,7 @@ typedef struct __frame_object {
 // void frame_object_constructor(frame_object_t * const this);
 
 typedef struct __buf_mgr {
+  struct __buf_mgr *this;
   frame_object_t * frames;
   int32_t num_of_frames;
 
@@ -61,10 +63,10 @@ typedef struct __buf_mgr {
   frame_object_t * LRU_queue_head; // head is an empty page. It just have pointer
   frame_object_t * LRU_queue_tail;
 
-  struct __page * (*request_page)(struct __buf_mgr * const this,
+  frame_object_t * (*request_frame)(struct __buf_mgr * const this,
       const int32_t table_id, const int64_t page_number);
-  bool (*release_page)(struct __buf_mgr * const this,
-      const int32_t table_id, const int64_t page_number);
+  bool (*release_frame)(struct __buf_mgr * const this,
+      frame_object_t * frame);
 } buf_mgr_t;
 
 void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frame);

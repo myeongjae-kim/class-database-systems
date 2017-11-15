@@ -26,3 +26,9 @@ shutdown_db 불리게 하자. init_db 부를 때 atexit으로 shutdown_db 등록
 
 여기까지는 준비 과정이고, 마지막으로
 init_db, shutdown_db 구현하면서 버퍼매니저 만들면 되겠다.
+
+
+다만들었다
+
+page_object_constructor 호출한 스코프에서 page_object_destructor도 불러줘라
+frame release 때문
