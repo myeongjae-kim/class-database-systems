@@ -88,7 +88,7 @@ typedef struct __page_object {
       const int64_t key);
 
   bool (*read)(struct __page_object * const) ;
-  bool (*write)(const struct __page_object * const);
+  bool (*write)(struct __page_object * const);
   void (*print)(const struct __page_object * const);
 
   // write record
@@ -97,7 +97,9 @@ typedef struct __page_object {
 
 } page_object_t;
 
-void page_object_constructor(page_object_t * const this, const int32_t table_id);
+void page_object_constructor(page_object_t * const this,
+    const int32_t table_id,
+    const int64_t page_number);
 void page_object_destructor(page_object_t * const this);
 
 

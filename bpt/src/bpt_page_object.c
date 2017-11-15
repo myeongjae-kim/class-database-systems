@@ -58,7 +58,7 @@ static bool __page_read(struct __page_object * const this){
 
   return true;
 }
-static bool __page_write(const struct __page_object * const this){
+static bool __page_write(struct __page_object * const this){
   if (this->current_page_number == 0) {
     printf("(page_object_t->write) You are trying to write header page\
  which is forbidden\n");
@@ -256,9 +256,8 @@ bool __insert_into_new_root(
   int64_t root_page_number = page_alloc(left->table_id);
 
   page_object_t root;
-  page_object_constructor(&root, left->table_id);
-
-  root.set_current_page_number(&root, root_page_number);
+  page_object_constructor(&root, left->table_id, root_page_number);
+  /** root.set_current_page_number(&root, root_page_number); */
   root.set_type(&root, INTERNAL_PAGE);
 
   root.page.header.one_more_page_offset =
@@ -384,9 +383,9 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
 
   int64_t new_page_number = page_alloc(old_node->table_id);
   struct __page_object new_node;
-  page_object_constructor(&new_node, old_node->table_id);
+  page_object_constructor(&new_node, old_node->table_id, new_page_number);
 
-  new_node.set_current_page_number(&new_node, new_page_number);
+  /** new_node.set_current_page_number(&new_node, new_page_number); */
   new_node.set_type(&new_node, INTERNAL_PAGE);
 
   // clear old node
@@ -419,12 +418,13 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
     old_node->page.header.linked_page_offset;
 
   struct __page_object child;
-  page_object_constructor(&child, old_node->table_id);
-
   // Leftmost page
-  child.set_current_page_number(&child,
-      new_node.page.header.one_more_page_offset / PAGE_SIZE);
-  child.read(&child);
+  page_object_constructor(&child, old_node->table_id,
+     new_node.page.header.one_more_page_offset / PAGE_SIZE);
+
+  /** child.set_current_page_number(&child, */
+  /**     new_node.page.header.one_more_page_offset / PAGE_SIZE); */
+  /** child.read(&child); */
   child.page.header.linked_page_offset =
     new_node.current_page_number * PAGE_SIZE;
   child.write(&child);
@@ -445,7 +445,7 @@ bool __insert_into_node_after_splitting(struct __page_object * const old_node,
   old_node->write(old_node);
   new_node.write(&new_node);
 
-  int rt_value = __insert_into_parent(old_node, k_prime, &new_node);
+  bool rt_value = __insert_into_parent(old_node, k_prime, &new_node);
   page_object_destructor(&new_node);
   return rt_value;
 }
@@ -473,10 +473,11 @@ bool __insert_into_parent(
    */
 
   struct __page_object parent;
-  page_object_constructor(&parent, left->table_id);
+  page_object_constructor(&parent, left->table_id
+      ,parent_offset / PAGE_SIZE);
 
-  parent.set_current_page_number(&parent, parent_offset / PAGE_SIZE);
-  parent.read(&parent);
+  /** parent.set_current_page_number(&parent, parent_offset / PAGE_SIZE); */
+  /** parent.read(&parent); */
   assert(parent.get_type(&parent) == INTERNAL_PAGE);
 
   left_index = __get_left_index(&parent, left);
@@ -553,10 +554,10 @@ bool __insert_record_after_splitting(struct __page_object * const this,
   int64_t new_leaf_page_number = page_alloc(this->table_id);
 
   page_object_t new_leaf;
-  page_object_constructor(&new_leaf, this->table_id);
-
   // link page object and physical page
-  new_leaf.set_current_page_number(&new_leaf, new_leaf_page_number);
+  page_object_constructor(&new_leaf, this->table_id, new_leaf_page_number);
+
+  /** new_leaf.set_current_page_number(&new_leaf, new_leaf_page_number); */
 
   // set type as leaf.
   new_leaf.set_type(&new_leaf, LEAF_PAGE);
@@ -740,11 +741,12 @@ void __remove_record_from_page(struct __page_object * const this,
 
 int64_t __get_page_number_of_left(const struct __page_object * const this){
   struct __page_object __parent_page;
-  page_object_constructor(&__parent_page, this->table_id);
-
-  __parent_page.set_current_page_number(&__parent_page,
+  page_object_constructor(&__parent_page, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
-  __parent_page.read(&__parent_page);
+
+  /** __parent_page.set_current_page_number(&__parent_page,
+    *     this->page.header.linked_page_offset / PAGE_SIZE); */
+  /** __parent_page.read(&__parent_page); */
 
   // Make it const to forbbid changing parent page's value
   const struct __page_object * const parent_page = &__parent_page;
@@ -784,11 +786,12 @@ void __get_k_prime_index_and_its_value(
     int64_t * const k_prime_index, int64_t * const k_prime) {
 
   struct __page_object __parent_page;
-  page_object_constructor(&__parent_page, this->table_id);
+  page_object_constructor(&__parent_page, this->table_id,
+     this->page.header.linked_page_offset / PAGE_SIZE);
 
-  __parent_page.set_current_page_number(&__parent_page,
-      this->page.header.linked_page_offset / PAGE_SIZE);
-  __parent_page.read(&__parent_page);
+  /** __parent_page.set_current_page_number(&__parent_page,
+    *     this->page.header.linked_page_offset / PAGE_SIZE);
+    * __parent_page.read(&__parent_page); */
 
   // Make it const to forbbid changing parent page's value
   const struct __page_object * const parent_page = &__parent_page;
@@ -957,7 +960,8 @@ bool __coalesce_nodes(struct __page_object * this,
   /* All children must now point up to the same parent.
   */
   struct __page_object child_page;
-  page_object_constructor(&child_page, this->table_id);
+  page_object_constructor(&child_page, this->table_id,
+    this->page.content.key_and_offsets[0].page_offset / PAGE_SIZE);
   for (i = 0; i < this->page.header.number_of_keys; ++i) {
     child_page.set_current_page_number(&child_page,
         this->page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
@@ -971,11 +975,12 @@ bool __coalesce_nodes(struct __page_object * this,
 
   // Get parent and remove neighbor from parent.
   struct __page_object parent;
-  page_object_constructor(&parent, this->table_id);
-
-  parent.set_current_page_number(&parent,
+  page_object_constructor(&parent, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
-  parent.read(&parent);
+
+  /** parent.set_current_page_number(&parent, */
+  /**     this->page.header.linked_page_offset / PAGE_SIZE); */
+  /** parent.read(&parent); */
 
   // delete key_and_offset from parent.
   bool result = __delete_key_and_offset_of_key(&parent, k_prime);
@@ -1034,11 +1039,12 @@ bool __redistribute_nodes(struct __page_object * this,
   assert(this->page.header.linked_page_offset
       == neighbor_page->page.header.linked_page_offset);
   struct __page_object parent;
-  page_object_constructor(&parent, this->table_id);
-
-  parent.set_current_page_number(&parent,
+  page_object_constructor(&parent, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
-  parent.read(&parent);
+
+  /** parent.set_current_page_number(&parent,
+    *     this->page.header.linked_page_offset / PAGE_SIZE);
+    * parent.read(&parent); */
 
 
   // 1. this <- neighbor_page
@@ -1096,11 +1102,12 @@ bool __redistribute_nodes(struct __page_object * this,
     // change parent of added record's page.
 
     struct __page_object child_page;
-    page_object_constructor(&child_page, this->table_id);
+    page_object_constructor(&child_page, this->table_id,
+      temp_key_and_offset.page_offset / PAGE_SIZE);
 
-    child_page.current_page_number =
-      temp_key_and_offset.page_offset / PAGE_SIZE;
-    child_page.read(&child_page);
+    /** child_page.current_page_number =
+      *   temp_key_and_offset.page_offset / PAGE_SIZE;
+      * child_page.read(&child_page); */
 
     child_page.page.header.linked_page_offset =
       this->current_page_number * PAGE_SIZE;
@@ -1171,11 +1178,12 @@ bool __redistribute_nodes(struct __page_object * this,
     // change parent of added record's page.
 
     struct __page_object child_page;
-    page_object_constructor(&child_page, this->table_id);
+    page_object_constructor(&child_page, this->table_id,
+      temp_key_and_offset.page_offset / PAGE_SIZE);
 
-    child_page.current_page_number =
-      temp_key_and_offset.page_offset / PAGE_SIZE;
-    child_page.read(&child_page);
+    /** child_page.current_page_number =
+      *   temp_key_and_offset.page_offset / PAGE_SIZE;
+      * child_page.read(&child_page); */
 
     child_page.page.header.linked_page_offset =
       this->current_page_number * PAGE_SIZE;
@@ -1230,11 +1238,12 @@ bool __coalesce_nodes_when_parent_is_root(
 
   // Now, 'this' is in left, and 'neighbor_page' is in right.
   struct __page_object leftmost;
-  page_object_constructor(&leftmost, this->table_id);
-
-  leftmost.set_current_page_number(&leftmost,
+  page_object_constructor(&leftmost, this->table_id,
       neighbor->page.header.one_more_page_offset / PAGE_SIZE);
-  leftmost.read(&leftmost);
+
+  /** leftmost.set_current_page_number(&leftmost,
+    *     neighbor->page.header.one_more_page_offset / PAGE_SIZE);
+    * leftmost.read(&leftmost); */
 
   assert(leftmost.get_type(&leftmost) == LEAF_PAGE);
 
@@ -1265,7 +1274,8 @@ bool __coalesce_nodes_when_parent_is_root(
   /* All children must now point up to the same parent.
   */
   struct __page_object child_page;
-  page_object_constructor(&child_page, this->table_id);
+  page_object_constructor(&child_page, this->table_id,
+        this->page.content.key_and_offsets[0].page_offset / PAGE_SIZE);
   for (i = 0; i < this->page.header.number_of_keys; ++i) {
     child_page.set_current_page_number(&child_page,
         this->page.content.key_and_offsets[i].page_offset / PAGE_SIZE);
@@ -1321,11 +1331,12 @@ bool __redistribute_nodes_when_parent_is_root(
 
 
   struct __page_object leftmost;
-  page_object_constructor(&leftmost, this->table_id);
-
-  leftmost.set_current_page_number(&leftmost,
+  page_object_constructor(&leftmost, this->table_id,
       neighbor->page.header.one_more_page_offset / PAGE_SIZE);
-  leftmost.read(&leftmost);
+
+  /** leftmost.set_current_page_number(&leftmost,
+    *     neighbor->page.header.one_more_page_offset / PAGE_SIZE);
+    * leftmost.read(&leftmost); */
 
   assert(leftmost.get_type(&leftmost) == INTERNAL_PAGE);
 
@@ -1431,13 +1442,13 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
   // Get parent page first.
 
   struct __page_object parent;
-  page_object_constructor(&parent, this->table_id);
-
-  parent.set_current_page_number(&parent,
+  page_object_constructor(&parent, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
 
+  /** parent.set_current_page_number(&parent,
+    *     this->page.header.linked_page_offset / PAGE_SIZE);
+    * parent.read(&parent); */
 
-  parent.read(&parent);
   // Get neighbor's index,
   // Here is the start of hell...
   int64_t neighbor_index = __get_neighbor_index(&parent,
@@ -1467,12 +1478,14 @@ bool __delete_key_and_offset_of_key(struct __page_object * const this,
 
   // Get neighbor page
   struct __page_object neighbor;
-  page_object_constructor(&neighbor, this->table_id);
-
-  neighbor.set_current_page_number(&neighbor,
+  page_object_constructor(&neighbor, this->table_id,
       parent.page.content.key_and_offsets[k_prime_index].page_offset
       / PAGE_SIZE);
-  neighbor.read(&neighbor);
+
+  /** neighbor.set_current_page_number(&neighbor,
+    *     parent.page.content.key_and_offsets[k_prime_index].page_offset
+    *     / PAGE_SIZE);
+    * neighbor.read(&neighbor); */
 
   int64_t capacity = OFFSET_ORDER;
 
@@ -1576,11 +1589,12 @@ bool __coalesce_leaves(struct __page_object * this,
 
   // Get parent and remove neighbor from parent.
   struct __page_object parent;
-  page_object_constructor(&parent, this->table_id);
-
-  parent.set_current_page_number(&parent,
+  page_object_constructor(&parent, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
-  parent.read(&parent);
+
+  /** parent.set_current_page_number(&parent,
+    *     this->page.header.linked_page_offset / PAGE_SIZE);
+    * parent.read(&parent); */
 
   bool result = __delete_key_and_offset_of_key(&parent, k_prime);
 
@@ -1639,11 +1653,12 @@ bool __redistribute_leaves(struct __page_object * this,
   assert(this->page.header.linked_page_offset
       == neighbor_page->page.header.linked_page_offset);
   struct __page_object parent;
-  page_object_constructor(&parent, this->table_id);
-
-  parent.set_current_page_number(&parent,
+  page_object_constructor(&parent, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
-  parent.read(&parent);
+
+  /** parent.set_current_page_number(&parent,
+    *     this->page.header.linked_page_offset / PAGE_SIZE);
+    * parent.read(&parent); */
 
 
   // 1. this <- neighbor_page
@@ -1754,11 +1769,12 @@ bool __redistribute_leaves(struct __page_object * this,
 
 bool __is_this_rightmost_in_parent(const struct __page_object * const this) {
   struct __page_object parent;
-  page_object_constructor(&parent, this->table_id);
-
-  parent.set_current_page_number(&parent,
+  page_object_constructor(&parent, this->table_id,
       this->page.header.linked_page_offset / PAGE_SIZE);
-  parent.read(&parent);
+
+  /** parent.set_current_page_number(&parent,
+    *     this->page.header.linked_page_offset / PAGE_SIZE);
+    * parent.read(&parent); */
 
   bool rt_value;
   if (parent.page.content.
@@ -1858,10 +1874,11 @@ bool __delete_record_of_key(struct __page_object * const this,
 
   // Get neighbor page
   struct __page_object neighbor_page;
-  page_object_constructor(&neighbor_page, this->table_id);
+  page_object_constructor(&neighbor_page, this->table_id,
+      neighbor_page_number);
 
-  neighbor_page.set_current_page_number(&neighbor_page, neighbor_page_number);
-  neighbor_page.read(&neighbor_page);
+  /** neighbor_page.set_current_page_number(&neighbor_page, neighbor_page_number);
+    * neighbor_page.read(&neighbor_page); */
 
   /* Coalescence. */
   bool rt_value;
@@ -1888,11 +1905,14 @@ bool __delete_record_of_key(struct __page_object * const this,
 }
 
 
-void page_object_constructor(page_object_t * const this, const int32_t table_id) {
+void page_object_constructor(page_object_t * const this,
+    const int32_t table_id,
+    const int64_t page_number) {
   memset(this, 0, sizeof(*this));
   this->this = this;
   this->table_id = table_id;
   this->frame = NULL;
+  this->current_page_number = page_number;
 
   this->read = __page_read;
   this->write = __page_write;
@@ -1925,6 +1945,10 @@ void page_object_constructor(page_object_t * const this, const int32_t table_id)
 
 
   this->delete_record_of_key = __delete_record_of_key;
+
+  
+  // Read it for cache
+  this->read(this);
 }
 
 

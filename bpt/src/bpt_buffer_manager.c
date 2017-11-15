@@ -141,7 +141,14 @@ static frame_object_t * __request_frame(struct __buf_mgr * const this,
 
       // LRU_next is found frame
       // remove found frame from list
+
+      if (LRU_iter->LRU_next == this->LRU_queue_tail) {
+        this->LRU_queue_tail = LRU_iter;
+      }
+
+
       LRU_iter->LRU_next = LRU_iter->LRU_next->LRU_next;
+      frame->LRU_next = NULL;
     }
     frame->pin_count++;
 
@@ -151,6 +158,7 @@ static frame_object_t * __request_frame(struct __buf_mgr * const this,
     // get the first element of the list
     frame = this->LRU_queue_head->LRU_next;
     this->LRU_queue_head->LRU_next = this->LRU_queue_head->LRU_next->LRU_next;
+    frame->LRU_next = NULL;
 
     // Below case is occurred when all of the frames is pinned.
     // This is not occurred in single core environment
@@ -182,11 +190,14 @@ bool __release_frame(struct __buf_mgr * const this,
   /** frame_object_t * frame = __find_frame(this, table_id, page_number); */
   // frame must be in the buffer.
   assert(frame != NULL);
+  assert(frame->LRU_next == NULL);
 
   frame->pin_count--;
   if (frame->pin_count == 0) {
     assert(this->LRU_queue_tail->LRU_next == NULL);
     this->LRU_queue_tail->LRU_next = frame;
+    this->LRU_queue_tail = this->LRU_queue_tail->LRU_next;
+    assert(this->LRU_queue_tail->LRU_next == NULL);
   }
 
   return true;

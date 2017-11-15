@@ -53,10 +53,11 @@ void go_to_page_number(const int32_t table_id, const int64_t page_number) {
 
 void print_all(int32_t table_id) {
   page_object_t page_buffer;
-  page_object_constructor(&page_buffer, table_id);
-  page_buffer.set_current_page_number(&page_buffer,
+  page_object_constructor(&page_buffer, table_id,
       header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
-  page_buffer.read(&page_buffer);
+  /** page_buffer.set_current_page_number(&page_buffer,
+    *     header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
+    * page_buffer.read(&page_buffer); */
 
   while (page_buffer.get_type(&page_buffer) != LEAF_PAGE) {
     assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE);
@@ -150,9 +151,9 @@ void init_table(const int32_t table_id) {
   // Go to root page
   page_object_t page;
   memset(&page, 0, sizeof(page));
-  page_object_constructor(&page, table_id);
-  page.current_page_number = 2;
-  page.read(&page);
+  page_object_constructor(&page, table_id, 2);
+  /** page.current_page_number = 2; */
+  /** page.read(&page); */
 
   // Write header of root
   // Parent of root is root.
@@ -178,10 +179,11 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
 
   // page object is needed.
   page_object_t page;
-  page_object_constructor(&page, table_id);
-  page.set_current_page_number(&page, 
+  page_object_constructor(&page, table_id,
       header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
-  page.read(&page);
+  /** page.set_current_page_number(&page, 
+    *     header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
+    * page.read(&page); */
 
   // Leaf is not found. Go to found leaf
   /** int64_t parent_offset; */
@@ -221,7 +223,7 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
   }
 
 
-  bool rt_value = page.get_current_page_number(&page);
+  int64_t rt_value = page.get_current_page_number(&page);
   page_object_destructor(&page);
 
   return rt_value;
@@ -271,9 +273,6 @@ int open_table (char *pathname){
 
 
 int insert(int32_t table_id, int64_t key, char *value){
-  int64_t leaf_page;
-  page_object_t page;
-  page_object_constructor(&page,table_id);
 #ifdef DBG
   printf("(insert) Start insert. key: %ld, value: %s\n", key, value);
 #endif
@@ -289,12 +288,15 @@ int insert(int32_t table_id, int64_t key, char *value){
 
 
   /** Find a leaf page to insert the value */
-  leaf_page = find_leaf_page(table_id, key);
+  int64_t leaf_page = find_leaf_page(table_id, key);
 
 
   /** If leaf has room for record, insert */
-  page.set_current_page_number(&page, leaf_page);
-  page.read(&page);
+
+  page_object_t page;
+  page_object_constructor(&page,table_id, leaf_page);
+  /** page.set_current_page_number(&page, leaf_page);
+    * page.read(&page); */
   assert(page.get_type(&page) == LEAF_PAGE);
   if (page.insert_record(&page, &record)) {
     // insertion is successful.
@@ -302,7 +304,7 @@ int insert(int32_t table_id, int64_t key, char *value){
   }
 
   /** If leaf has no room for record, split and insert */
-  bool rt_value = page.insert_record_after_splitting(&page, &record);
+  int rt_value = page.insert_record_after_splitting(&page, &record);
   page_object_destructor(&page);
   return rt_value;
 }
@@ -319,9 +321,9 @@ char * find(int32_t table_id, int64_t key){
     return NULL;
   }
 
-  page_object_constructor(&page_buffer, table_id);
-  page_buffer.set_current_page_number(&page_buffer, leaf_page);
-  page_buffer.read(&page_buffer);
+  page_object_constructor(&page_buffer, table_id, leaf_page);
+  /** page_buffer.set_current_page_number(&page_buffer, leaf_page); */
+  /** page_buffer.read(&page_buffer); */
 
   char* rt_value;
 
@@ -353,9 +355,9 @@ int delete(int32_t table_id, int64_t key){
     return 1;
   }
 
-  page_object_constructor(&page_buffer, table_id);
-  page_buffer.set_current_page_number(&page_buffer, leaf_page);
-  page_buffer.read(&page_buffer);
+  page_object_constructor(&page_buffer, table_id, leaf_page);
+  /** page_buffer.set_current_page_number(&page_buffer, leaf_page);
+    * page_buffer.read(&page_buffer); */
   assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
 
   int rt_value;

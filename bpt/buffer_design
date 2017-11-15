@@ -32,3 +32,7 @@ init_db, shutdown_db 구현하면서 버퍼매니저 만들면 되겠다.
 
 page_object_constructor 호출한 스코프에서 page_object_destructor도 불러줘라
 frame release 때문
+
+----여기까지 완료
+해야 할 것: LRU_tail도 dummy로 만들기.
+LRU_tail->next는 사실 before를 가리킨다.
