@@ -458,7 +458,6 @@ frame_object_t * __LRU_tail_pop(buf_mgr_t * const this) {
   return rt_value;
 }
 
-
 void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frames){
   int i;
   this->this = this;

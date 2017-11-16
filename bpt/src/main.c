@@ -484,6 +484,6 @@ end:
 #endif
 
   shutdown_db();
-  remove_all_mapping_and_close();
+  /** remove_all_mapping_and_close(); */
   return 0;
 }

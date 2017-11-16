@@ -5,6 +5,8 @@
 #include "bpt_free_page_manager.h"
 #include "bpt_fd_table_map.h"
 
+#include "bpt_buffer_manager.h"
+
 #include <string.h>
 #include <assert.h>
 

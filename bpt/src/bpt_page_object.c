@@ -485,8 +485,11 @@ bool __insert_into_parent(
   /* Simple case: the new key fits into the node.
   */
 
+  bool rt_value;
   if (parent.get_number_of_keys(&parent) < (int64_t)OFFSET_ORDER - 1) {
-    return __insert_into_node(&parent, left_index, key, right);
+    rt_value = __insert_into_node(&parent, left_index, key, right);
+    page_object_destructor(&parent);
+    return rt_value;
   }
 
 
@@ -494,7 +497,7 @@ bool __insert_into_parent(
    * to preserve the B+ tree properties.
    */
 
-  bool rt_value =  __insert_into_node_after_splitting(
+  rt_value =  __insert_into_node_after_splitting(
       &parent, left_index, key, right);
 
   page_object_destructor(&parent);
@@ -768,15 +771,17 @@ int64_t __get_page_number_of_left(const struct __page_object * const this){
   // (i - 1) means the left page.
   // Even though i == 0, it is okay.
   
-  page_object_destructor(&__parent_page);
 
+  int64_t rt_value;
   if (i == 0) {
-    return parent_page->page.header.one_more_page_offset / PAGE_SIZE;
+    rt_value = parent_page->page.header.one_more_page_offset / PAGE_SIZE;
   } else{
-    return parent_page->page.content.key_and_offsets[i - 1].page_offset
+    rt_value = parent_page->page.content.key_and_offsets[i - 1].page_offset
       / PAGE_SIZE;
   }
 
+  page_object_destructor(&__parent_page);
+  return rt_value;
 }
 
 
