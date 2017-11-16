@@ -300,6 +300,7 @@ int insert(int32_t table_id, int64_t key, char *value){
   assert(page.get_type(&page) == LEAF_PAGE);
   if (page.insert_record(&page, &record)) {
     // insertion is successful.
+    page_object_destructor(&page);
     return 0;
   }
 
