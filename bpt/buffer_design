@@ -39,3 +39,32 @@ LRU_tail->next는 사실 before를 가리킨다.
 ㄴㄴ이렇게 하지 말고 LRU를 doubly linked list로 만들자. dummy head와 dummy tail 갖고 있게 만들고. 함수 만들어서 LRU_head_insert, LRU_tail_insert, LRU_head_remove, LRU_tail_remove 이렇게 4개 function. Counter도 만들자. 에러 체크하기 좋겠다.
 LRU_head_find
 LRU_tail_find 이것도 만들어라
+
+
+
+
+
+
+
+
+
+
+ㅅㅂ.. 왜 프리페이지 클린이 난리야?
+
+0은 헤더페이지
+1은 프리페이지 리스트 헤더 더미
+2는 루트
+
+
+32까지 입력하면
+
+2는 left, 3은 right,  4는 root가 된다.
+여기서 3과 4를 지우고 2만 남게됨.
+
+
+그리고 0,1,4를 무한루프 돈다. 어떻게된거야?
+
+page free 하면 버퍼에서 dirty bit 켜주면 되나. 값 0으로 바꿔주고.
+ㄴㄴ dirty bit 켜줄 필요는 없을듯. 싱크 맞춰주면 되니까.
+
+그냥 page free하면 버퍼에서 빼버려라. 없애버려

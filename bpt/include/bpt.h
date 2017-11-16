@@ -19,7 +19,7 @@
 #define DBG
 // #define TESTING
 
-#define BUF_FRAME_NUM 5
+#define BUF_FRAME_NUM 20
 
 #include <stdint.h>
 #include <stdio.h>
