@@ -36,3 +36,6 @@ frame release 때문
 ----여기까지 완료
 해야 할 것: LRU_tail도 dummy로 만들기.
 LRU_tail->next는 사실 before를 가리킨다.
+ㄴㄴ이렇게 하지 말고 LRU를 doubly linked list로 만들자. dummy head와 dummy tail 갖고 있게 만들고. 함수 만들어서 LRU_head_insert, LRU_tail_insert, LRU_head_remove, LRU_tail_remove 이렇게 4개 function. Counter도 만들자. 에러 체크하기 좋겠다.
+LRU_head_find
+LRU_tail_find 이것도 만들어라

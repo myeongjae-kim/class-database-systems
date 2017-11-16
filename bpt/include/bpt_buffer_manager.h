@@ -25,6 +25,7 @@ typedef struct __frame_object {
   int64_t page_offset;
   bool is_dirty;
   int32_t pin_count;
+  struct __frame_object * LRU_prev; // go to prev element.
   struct __frame_object * LRU_next; // go to next element.
 
   // Custom
@@ -60,8 +61,10 @@ typedef struct __buf_mgr {
 
   // Frame is added to LRU_queue when pin_count goes zero.
   // All frames will be in LRU_queue in first.
+  // Doubly linked pointer. Head and tail has dummy node
   frame_object_t * LRU_queue_head; // head is an empty page. It just have pointer
-  frame_object_t * LRU_queue_tail;
+  frame_object_t * LRU_queue_tail; // tail is an empty page. It just have pointer
+  int32_t LRU_queue_count;
 
   frame_object_t * (*request_frame)(struct __buf_mgr * const this,
       const int32_t table_id, const int64_t page_number);
