@@ -63,7 +63,7 @@ void print_all(int32_t table_id) {
     assert(page_buffer.get_type(&page_buffer) != INVALID_PAGE);
 
     page_buffer.set_current_page_number(&page_buffer,
-        page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+        page_buffer.page->header.one_more_page_offset / PAGE_SIZE);
     page_buffer.read(&page_buffer);
   }
 
@@ -73,22 +73,22 @@ void print_all(int32_t table_id) {
 
   while(1){
     assert(page_buffer.get_type(&page_buffer) == LEAF_PAGE);
-    for (i = 0; i < page_buffer.page.header.number_of_keys; ++i) {
+    for (i = 0; i < page_buffer.page->header.number_of_keys; ++i) {
 
       printf("[table_id: %d, page #%ld] key:%ld, value:%s\n",
           page_buffer.table_id,
           page_buffer.get_current_page_number(&page_buffer),
-          page_buffer.page.content.records[i].key,
-          page_buffer.page.content.records[i].value);
+          page_buffer.page->content.records[i].key,
+          page_buffer.page->content.records[i].value);
 
-      if (page_buffer.page.content.records[i].key
+      if (page_buffer.page->content.records[i].key
           != correct++)  {
         assert(false);
       }
     }
-    if (page_buffer.page.header.one_more_page_offset != 0) {
+    if (page_buffer.page->header.one_more_page_offset != 0) {
       page_buffer.set_current_page_number(&page_buffer,
-          page_buffer.page.header.one_more_page_offset / PAGE_SIZE);
+          page_buffer.page->header.one_more_page_offset / PAGE_SIZE);
       page_buffer.read(&page_buffer);
     } else {
       break;
@@ -165,7 +165,7 @@ void init_table(const int32_t table_id) {
   // 3. Root page
 
   // Root's parent offset should be zero.
-  page.page.header.is_leaf = true;
+  page.page->header.is_leaf = true;
   page.write(&page);
 
 
@@ -206,7 +206,7 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
     // Next page is found. Go to next page
     if (i == 0) {
       page.set_current_page_number(&page, 
-          page.page.header.one_more_page_offset / PAGE_SIZE);
+          page.page->header.one_more_page_offset / PAGE_SIZE);
     } else {
       // i-1 because of the internal page structure
       page.set_current_page_number(&page, 
@@ -216,7 +216,7 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
 
 
     ///////////////////////////////////////////////
-    /** page.page.header.linked_page_offset = parent_offset; */
+    /** page.page->header.linked_page_offset = parent_offset; */
     /** page.write(&page); */
     ///////////////////////////////////////////////
 
@@ -329,7 +329,7 @@ char * find(int32_t table_id, int64_t key){
   char* rt_value;
 
   for (i = 0; i < page_buffer.get_number_of_keys(&page_buffer); ++i) {
-    if (page_buffer.page.content.records[i].key == (int64_t)key) {
+    if (page_buffer.page->content.records[i].key == (int64_t)key) {
       break;
     }
   }
@@ -337,7 +337,7 @@ char * find(int32_t table_id, int64_t key){
     rt_value = NULL;
   } else {
     memset(find_result_buffer, 0, sizeof(find_result_buffer));
-    memcpy(find_result_buffer, page_buffer.page.content.records[i].value,
+    memcpy(find_result_buffer, page_buffer.page->content.records[i].value,
         sizeof(find_result_buffer));
     rt_value = find_result_buffer;
   }
@@ -399,5 +399,12 @@ int init_db (int buf_num){
 }
 
 int shutdown_db(void) {
+  // free page clean
+  int i;
+  for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
+    if (get_fd_of_table(i) != 0) {
+      free_page_clean(i);
+    }
+  }
   buf_mgr_destructor(&buf_mgr);
 }

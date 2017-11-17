@@ -95,6 +95,7 @@ static bool __write(struct __frame_object* const this) {
     assert(false);
     exit(1);
   }
+  fsync(fd);
 
   this->is_dirty = false;
 

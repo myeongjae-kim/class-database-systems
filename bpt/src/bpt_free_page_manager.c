@@ -39,13 +39,14 @@ static bool __is_free_page(const int table_id, const int64_t page_number) {
 
 
   // linked_page_offset is an next free page offset
-  if (page.page.header.linked_page_offset == 0) {
+  if (page.page->header.linked_page_offset == 0) {
 #ifdef DBG
     fprintf(stderr, "(__is_free_page)");
     fprintf(stderr, " Page #%ld is not a free page.\n", page_number);
 #endif
+    page_object_destructor(&page);
     return false;
-  } else if (memcmp(&page.page.header.is_leaf,
+  } else if (memcmp(&page.page->header.is_leaf,
         &empty_page_dummy[sizeof(int64_t)],
         PAGE_SIZE - sizeof(int64_t)) == 0) {
     // It means that this page only have next free page offset
@@ -74,7 +75,7 @@ static bool __add(const int table_id, const int64_t number_of_new_pages) {
 
 
   // tail page should be empty.
-  assert(memcmp(&page.page.header.linked_page_offset,
+  assert(memcmp(&page.page->header.linked_page_offset,
         empty_page_dummy, PAGE_SIZE) == 0);
 
   // Add free pages.
@@ -90,7 +91,7 @@ static bool __add(const int table_id, const int64_t number_of_new_pages) {
     assert(next_free_page_number == __tail_page_number[table_id] + 1);
 
     // Wrtie next page's offset to current page
-    page.page.header.linked_page_offset = next_free_page_number * PAGE_SIZE;
+    page.page->header.linked_page_offset = next_free_page_number * PAGE_SIZE;
     page.write(&page);
     
     // Increase number of pages
@@ -137,7 +138,7 @@ static int64_t __find_prev_free_page_number_of(int table_id,
     page.current_page_number = current_free_page_number;
     page.read(&page);
 
-    next_free_page_offset = page.page.header.linked_page_offset;
+    next_free_page_offset = page.page->header.linked_page_offset;
     if (next_free_page_offset == 0) {
       // This case cannot be happen.
       fprintf(stderr, "(__find_prev_free_page_number_of)");
@@ -189,11 +190,11 @@ static bool __delete_free_page_in_last_of_db(int table_id,
   page_object_constructor(&prev_page, table_id,
       prev_page_number);
 
-  memcpy(&prev_page.page, &found_free_page.page, PAGE_SIZE);
+  memcpy(prev_page.page, found_free_page.page, PAGE_SIZE);
   prev_page.write(&prev_page);
 
   // clear deleted page
-  memset(&found_free_page.page, 0, PAGE_SIZE);
+  memset(found_free_page.page, 0, PAGE_SIZE);
   found_free_page.write(&found_free_page);
 
 
@@ -232,14 +233,13 @@ void free_page_manager_init(int table_id) {
   page_object_constructor(&page,
       table_id, __head_free_page_number[table_id]);
 
-  int64_t *next_free_page_offset = &page.page.header.linked_page_offset;
-  assert(*next_free_page_offset % PAGE_SIZE == 0);
+  assert(page.page->header.linked_page_offset % PAGE_SIZE == 0);
 
   //  If there is only free page,
   // generate one page.
 
-  if (*next_free_page_offset == 0) {
-    *next_free_page_offset =
+  if (page.page->header.linked_page_offset == 0) {
+    page.page->header.linked_page_offset =
       header_page[table_id].get_number_of_pages(&header_page[table_id]) * PAGE_SIZE;
 
     page.write(&page);
@@ -253,7 +253,7 @@ void free_page_manager_init(int table_id) {
   __tail_page_number[table_id] = 0;
 
   // Interate list to find last free page
-  while (*next_free_page_offset != 0) {
+  while (page.page->header.linked_page_offset != 0) {
 #ifdef DBG
     // Check whether current free page is a real free page.
     if (current_free_page_offset / PAGE_SIZE != __head_free_page_number[table_id]
@@ -269,12 +269,12 @@ void free_page_manager_init(int table_id) {
     __current_capacity[table_id]++;
 
     // save next free page offset to current free page offset
-    current_free_page_offset = *next_free_page_offset;
+    current_free_page_offset = page.page->header.linked_page_offset;
 
     page.table_id = table_id;
     page.current_page_number = current_free_page_offset / PAGE_SIZE;
     page.read(&page);
-    assert(*next_free_page_offset % PAGE_SIZE == 0);
+    assert(page.page->header.linked_page_offset % PAGE_SIZE == 0);
   }
 
   // Set tail page.
@@ -300,17 +300,17 @@ int64_t page_alloc(int table_id){
       table_id, __head_free_page_number[table_id]);
 
   // at least one page should exist!
-  assert(head_free_page.page.header.linked_page_offset != 0);
+  assert(head_free_page.page->header.linked_page_offset != 0);
 
-  int64_t first_page_offset = head_free_page.page.header.linked_page_offset;
+  int64_t first_page_offset = head_free_page.page->header.linked_page_offset;
 
   // Read the content of first free page and write it to head.
   page_object_t first_free_page;
   page_object_constructor(&first_free_page,
       table_id, first_page_offset / PAGE_SIZE);
 
-  head_free_page.page.header.linked_page_offset = 
-    first_free_page.page.header.linked_page_offset;
+  head_free_page.page->header.linked_page_offset = 
+    first_free_page.page->header.linked_page_offset;
 
   head_free_page.write(&head_free_page);
 
@@ -318,8 +318,8 @@ int64_t page_alloc(int table_id){
   assert(__current_capacity[table_id] > 0);
 
   // Turn on is_leaf bit to show that this page is not a free page.
-  memset(&first_free_page.page, 0, PAGE_SIZE);
-  first_free_page.page.header.is_leaf = 1;
+  memset(first_free_page.page, 0, PAGE_SIZE);
+  first_free_page.page->header.is_leaf = 1;
   first_free_page.write(&first_free_page);
 
 
@@ -340,7 +340,7 @@ bool page_free(int table_id, const int64_t page_number){
   page_object_constructor(&target_page, table_id, page_number);
 
   // It cannot be empty page
-  assert(memcmp(&target_page.page, empty_page_dummy, PAGE_SIZE) != 0);
+  assert(memcmp(target_page.page, empty_page_dummy, PAGE_SIZE) != 0);
 
 
   // Write head's content to this page and make head pointing this page.
@@ -348,11 +348,11 @@ bool page_free(int table_id, const int64_t page_number){
   page_object_constructor(&head_free_page,
       table_id, __head_free_page_number[table_id]);
 
-  memcpy(&target_page.page, &head_free_page.page, PAGE_SIZE);
+  memcpy(target_page.page, head_free_page.page, PAGE_SIZE);
   target_page.type = INTERNAL_PAGE; // TODO Can it be removed?
   target_page.write(&target_page);
 
-  head_free_page.page.header.linked_page_offset =
+  head_free_page.page->header.linked_page_offset =
     target_page.current_page_number * PAGE_SIZE;
   head_free_page.write(&head_free_page);
 
@@ -424,25 +424,25 @@ void free_page_clean(int table_id){
     iter_page.current_page_number = current_free_page;
     iter_page.read(&iter_page);
 
-    if (memcmp(&iter_page.page, empty_page_dummy, PAGE_SIZE) == 0) {
+    if (memcmp(iter_page.page, empty_page_dummy, PAGE_SIZE) == 0) {
       // We are in the end of free page list
       break;
     }
 
     // delete free page
-    if (iter_page.page.header.linked_page_offset > 
+    if (iter_page.page->header.linked_page_offset > 
         last_content_page_number * PAGE_SIZE) {
-      __delete_free_page_in_last_of_db(table_id, iter_page.page.header.linked_page_offset / PAGE_SIZE);
+      __delete_free_page_in_last_of_db(table_id, iter_page.page->header.linked_page_offset / PAGE_SIZE);
     } else {
       // or go to next free page
-      current_free_page = iter_page.page.header.linked_page_offset;
+      current_free_page = iter_page.page->header.linked_page_offset;
     }
   }
 
   // All pages free pages are deleted.
   // Add one free page
   __tail_page_number[table_id] = last_content_page_number + 1;
-  __add(table_id, 1);
+  /** __add(table_id, 1); */
   
 
   page_object_destructor(&iter_page);

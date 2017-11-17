@@ -75,7 +75,6 @@ void remove_all_mapping_and_close() {
   int i;
   for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
     if (fd_to_table_map[i] != 0) {
-      free_page_clean(i);
       if(close(fd_to_table_map[i]) < 0) {
         perror("remove_all_mapping_and_close");
         exit(1);

@@ -29,7 +29,7 @@ typedef struct __page_object {
   struct __page_object *this;
 
   // page content can be interpreted as leaf page of internal page.
-  struct __page page;
+  struct __page *page;
   struct __frame_object * frame;
 
   enum page_type type;

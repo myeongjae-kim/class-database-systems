@@ -230,7 +230,9 @@ int main(void)
 #endif
 
         // open table
+#ifdef DBG
         assert(opened_table_id == 0);
+#endif
         opened_table_id = open_table(input_iterator);
         if (opened_table_id < 0) {
           printf("(main) DB Opening is failed.\n");  
@@ -320,7 +322,9 @@ TEST_SCRIPT:
         }
 
         // open table
+#ifdef DBG
         assert(opened_table_id == 0);
+#endif
         opened_table_id = open_table(input_iterator);
         if (opened_table_id < 0) {
           printf("(main) DB Opening is failed.\n");  
@@ -484,7 +488,7 @@ end:
 #endif
 
   // TODO: Debugging free_page_clean();
-  remove_all_mapping_and_close();
   shutdown_db();
+  remove_all_mapping_and_close();
   return 0;
 }
