@@ -483,7 +483,8 @@ end:
   free(not_found);
 #endif
 
+  // TODO: Debugging free_page_clean();
+  remove_all_mapping_and_close();
   shutdown_db();
-  /** remove_all_mapping_and_close(); */
   return 0;
 }
