@@ -10,3 +10,4 @@ lib/*.a
 temp
 log
 test*
+perf*
