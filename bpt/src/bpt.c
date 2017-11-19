@@ -401,6 +401,8 @@ int init_db (int buf_num){
 int shutdown_db(void) {
   // free page clean
   int i;
+
+  buf_mgr.flush(&buf_mgr);
   for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
     if (get_fd_of_table(i) != 0) {
       free_page_clean(i);

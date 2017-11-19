@@ -192,10 +192,12 @@ static bool __delete_free_page_in_last_of_db(int table_id,
 
   memcpy(prev_page.page, found_free_page.page, PAGE_SIZE);
   prev_page.write(&prev_page);
+  prev_page.frame->write(prev_page.frame);
 
   // clear deleted page
   memset(found_free_page.page, 0, PAGE_SIZE);
   found_free_page.write(&found_free_page);
+  found_free_page.frame->write(found_free_page.frame);
 
 
   // Decrease the number of pages.

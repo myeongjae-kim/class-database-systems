@@ -90,6 +90,10 @@ static bool __write(struct __frame_object* const this) {
   int fd = get_fd_of_table(this->table_id);
   assert(fd != 0);
 
+  if (this->is_dirty == false) {
+    return true;
+  }
+
   if (write(fd, this->page, PAGE_SIZE) < 0) {
     perror("(frame_object_t->read)");
     assert(false);
@@ -459,6 +463,15 @@ frame_object_t * __LRU_tail_pop(buf_mgr_t * const this) {
   return rt_value;
 }
 
+void __flush(buf_mgr_t * const this) {
+  int i;
+  for (i = 0; i < this->num_of_frames; ++i) {
+    if (this->frames[i].table_id != 0) {
+      this->frames[i].write(&this->frames[i]);
+    }
+  }
+}
+
 void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frames){
   int i;
   this->this = this;
@@ -491,20 +504,18 @@ void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frames){
 
   this->request_frame = __request_frame;
   this->release_frame = __release_frame;
+  this->flush = __flush;
 }
 
 
 void buf_mgr_destructor(buf_mgr_t * const this){
   //write every dirty page to disk before free.
-  int i;
-  for (i = 0; i < this->num_of_frames; ++i) {
-    if (this->frames[i].table_id != 0) {
-      this->frames[i].write(&this->frames[i]);
-    }
-  }
+  this->flush(this);
   
   free(this->frames);
   free(this->LRU_queue_head);
   free(this->LRU_queue_tail);
   memset(this, 0, sizeof(*this));
 }
+
+
