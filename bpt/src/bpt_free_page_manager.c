@@ -159,44 +159,20 @@ static int64_t __find_prev_free_page_number_of(int table_id,
 // It only can be called in page_clean()
 // ** Warning: If a page which is not in the last of db is deleted,
 //  unexpected situation will be occurred! **
-static bool __delete_free_page_in_last_of_db(int table_id,
-    const int64_t free_page_number) {
-  int64_t prev_page_number;
+static bool __delete_free_page_in_last_of_db(
+    page_object_t * prev_page,
+    page_object_t * found_free_page) {
+  int table_id = prev_page->table_id;
+  int64_t free_page_number = found_free_page->current_page_number;
 
-  if (__is_free_page(table_id, free_page_number) == false) {
-#ifdef DBG
-    printf("(__delete_free_page_in_last_of_db)");
-    printf("Page #%ld is not a free page.\n", free_page_number);
-#endif
-    return false;
-  }
-
-  prev_page_number = __find_prev_free_page_number_of(
-      table_id, free_page_number);
-
-  if (prev_page_number == 0) {
-    fprintf(stderr, "(__delete_free_page_in_last_of_db)");
-    fprintf(stderr,"Free page deletion is failed.\n");
-    return false;
-  }
-
-  // read next page number and write the content to prev_page
-  page_object_t found_free_page;
-  page_object_t prev_page;
-
-  page_object_constructor(&found_free_page, table_id,
-      free_page_number);
-  page_object_constructor(&prev_page, table_id,
-      prev_page_number);
-
-  memcpy(prev_page.page, found_free_page.page, PAGE_SIZE);
-  prev_page.write(&prev_page);
-  prev_page.frame->write(prev_page.frame);
+  memcpy(prev_page->page, found_free_page->page, PAGE_SIZE);
+  prev_page->write(prev_page);
+  prev_page->frame->write(prev_page->frame);
 
   // clear deleted page
-  memset(found_free_page.page, 0, PAGE_SIZE);
-  found_free_page.write(&found_free_page);
-  found_free_page.frame->write(found_free_page.frame);
+  memset(found_free_page->page, 0, PAGE_SIZE);
+  found_free_page->write(found_free_page);
+  found_free_page->frame->write(found_free_page->frame);
 
 
   // Decrease the number of pages.
@@ -213,10 +189,6 @@ static bool __delete_free_page_in_last_of_db(int table_id,
   printf("(__delete_free_page_in_last_of_db) Free page #%ld is deleted.\n",
       free_page_number);
 #endif
-
-  page_object_destructor(&found_free_page);
-  page_object_destructor(&prev_page);
-
   return true;
 }
 
@@ -416,13 +388,16 @@ void free_page_clean(int table_id){
   // Iterate whole free page list and remove free page
   // which is following last content page.
 
-  int64_t current_free_page = __head_free_page_number[table_id];
+  int64_t current_free_page_num = __head_free_page_number[table_id];
 
   page_object_t iter_page;
-  page_object_constructor(&iter_page, table_id, current_free_page);
+  page_object_constructor(&iter_page, table_id, current_free_page_num);
+
+  page_object_t to_be_removed_page;
+  page_object_constructor(&to_be_removed_page, table_id, current_free_page_num);
 
   while (1) {
-    iter_page.current_page_number = current_free_page;
+    iter_page.current_page_number = current_free_page_num;
     iter_page.read(&iter_page);
 
     if (memcmp(iter_page.page, empty_page_dummy, PAGE_SIZE) == 0) {
@@ -431,12 +406,17 @@ void free_page_clean(int table_id){
     }
 
     // delete free page
+    // dummy is always page #1
     if (iter_page.page->header.linked_page_offset > 
         last_content_page_number * PAGE_SIZE) {
-      __delete_free_page_in_last_of_db(table_id, iter_page.page->header.linked_page_offset / PAGE_SIZE);
+      to_be_removed_page.current_page_number = 
+        iter_page.page->header.linked_page_offset / PAGE_SIZE;
+
+      to_be_removed_page.read(&to_be_removed_page);
+      __delete_free_page_in_last_of_db(&iter_page, &to_be_removed_page);
     } else {
       // or go to next free page
-      current_free_page = iter_page.page->header.linked_page_offset;
+      current_free_page_num = iter_page.page->header.linked_page_offset;
     }
   }
 
@@ -447,6 +427,7 @@ void free_page_clean(int table_id){
   
 
   page_object_destructor(&iter_page);
+  page_object_destructor(&to_be_removed_page);
 
 
   //  Truncate file

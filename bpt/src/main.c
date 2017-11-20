@@ -419,12 +419,6 @@ TEST_SCRIPT:
 #endif
 
         if ((find_result = find(opened_table_id, key)) != NULL) {
-#ifdef DBG
-          assert(find(opened_table_id, 1) != NULL);
-#endif
-
-
-
           if (delete(opened_table_id, key) == 0) {
 #ifdef DBG
             printf("(delete)[key: %ld, value: %s] is deleted.\n"
