@@ -8,10 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef DBG
-#include <assert.h>
-#endif
-
 // TODO: delete
 #include "bpt_header_object.h"
 #include "bpt_page_object.h"
@@ -143,7 +139,6 @@ int main(void)
   int32_t i;
   bool open_is_called = false;
   int opened_table_id = 0;
-
 
 #ifndef TESTING
 #ifdef fsync
@@ -424,6 +419,12 @@ TEST_SCRIPT:
 #endif
 
         if ((find_result = find(opened_table_id, key)) != NULL) {
+#ifdef DBG
+          assert(find(opened_table_id, 1) != NULL);
+#endif
+
+
+
           if (delete(opened_table_id, key) == 0) {
 #ifdef DBG
             printf("(delete)[key: %ld, value: %s] is deleted.\n"

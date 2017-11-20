@@ -6,7 +6,6 @@
 #include "bpt_free_page_manager.h"
 #include "bpt_fd_table_map.h"
 #include <string.h>
-#include <assert.h>
 
 extern header_object_t header_page[MAX_TABLE_NUM + 1];
 extern buf_mgr_t buf_mgr;
@@ -1014,6 +1013,7 @@ bool __coalesce_nodes(struct __page_object * this,
     // Make 'this' as root
     header_page[this->table_id].set_root_page_offset(&header_page[this->table_id],
         this->get_current_page_number(this) * PAGE_SIZE);
+    header_page[this->table_id].write(&header_page[this->table_id]);
     this->page->header.linked_page_offset = 0;
     this->write(this);
   }
@@ -1308,6 +1308,7 @@ bool __coalesce_nodes_when_parent_is_root(
   // Make 'this' as root
   header_page[table_id].set_root_page_offset(&header_page[table_id],
       this->get_current_page_number(this) * PAGE_SIZE);
+  header_page[table_id].write(&header_page[table_id]);
   this->page->header.linked_page_offset = 0;
   this->write(this);
 
@@ -1639,6 +1640,7 @@ bool __coalesce_leaves(struct __page_object * this,
       // Make 'this' as root
       header_page[table_id].set_root_page_offset(&header_page[table_id],
           this->get_current_page_number(this) * PAGE_SIZE);
+      header_page[table_id].write(&header_page[table_id]);
       this->page->header.linked_page_offset = 0;
       this->write(this);
     }

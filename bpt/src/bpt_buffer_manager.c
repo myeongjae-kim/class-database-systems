@@ -4,7 +4,6 @@
 #include "bpt_free_page_manager.h"
 
 #include <string.h>
-#include <assert.h>
 
 buf_mgr_t buf_mgr;
 
@@ -279,11 +278,7 @@ void __LRU_head_insert(buf_mgr_t * const this, frame_object_t * frame) {
   assert(this->LRU_queue_tail->LRU_next == NULL);
 
   // If duplication is occurred, it is an error.
-  if (__LRU_find_from_head(this, frame) != NULL) {
-    fprintf(stderr, "(__LRU_head_insert) duplicate is found\n");
-    assert(false);
-    exit(1);
-  }
+  assert(__LRU_find_from_head(this, frame) == NULL);
 
 
   // frame
@@ -316,12 +311,7 @@ void __LRU_tail_insert(buf_mgr_t * const this,
   assert(this->LRU_queue_tail->LRU_next == NULL);
 
   // If duplication is occurred, it is an error.
-  if (__LRU_find_from_tail(this, frame) != NULL) {
-    fprintf(stderr, "(__LRU_tail_insert) duplicate is found\n");
-    assert(false);
-    exit(1);
-  }
-
+  assert(__LRU_find_from_tail(this, frame) == NULL);
 
   // frame
   frame->LRU_next = this->LRU_queue_tail;

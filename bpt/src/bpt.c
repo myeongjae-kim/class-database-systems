@@ -6,8 +6,6 @@
 
 #include "bpt.h"
 
-#include <assert.h>
-
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -181,9 +179,11 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
   page_object_t page;
   page_object_constructor(&page, table_id,
       header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
-  /** page.set_current_page_number(&page, 
-    *     header_page[table_id].get_root_page_offset(&header_page[table_id]) / PAGE_SIZE);
-    * page.read(&page); */
+
+  // When root has no keys
+  if (page.page->header.number_of_keys == 0) {
+    goto end;
+  }
 
   // Leaf is not found. Go to found leaf
   /** int64_t parent_offset; */
@@ -223,7 +223,9 @@ int64_t find_leaf_page(int32_t table_id, const int key) {
   }
 
 
-  int64_t rt_value = page.get_current_page_number(&page);
+  int64_t rt_value;
+end:
+  rt_value = page.get_current_page_number(&page);
   page_object_destructor(&page);
 
   return rt_value;
@@ -405,7 +407,7 @@ int shutdown_db(void) {
   buf_mgr.flush(&buf_mgr);
   for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
     if (get_fd_of_table(i) != 0) {
-      free_page_clean(i);
+      /** free_page_clean(i); */
     }
   }
   buf_mgr_destructor(&buf_mgr);

@@ -4,7 +4,7 @@
 
 #include "bpt_fd_table_map.h"
 #include "bpt_free_page_manager.h"
-#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 

@@ -3,7 +3,6 @@
 #include "bpt_buffer_manager.h"
 
 #include <string.h>
-#include <assert.h>
 
 // A size of free page list
 static int64_t __current_capacity[MAX_TABLE_NUM + 1];

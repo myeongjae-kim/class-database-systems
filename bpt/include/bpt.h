@@ -12,11 +12,13 @@
 // Allow system to handle a file which is bigger than 4GB
 #define _LARGEFILE64_SOURCE
 
+
 // If fsync(x); is defined, DB will work as buffered I/O
 // #define fsync(x);
-#define assert(x);
+#include <assert.h>
+// #define assert(x);
 
-// #define DBG
+#define DBG
 // #define TESTING
 
 #define BUF_FRAME_NUM 16
