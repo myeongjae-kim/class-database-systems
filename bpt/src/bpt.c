@@ -407,7 +407,7 @@ int shutdown_db(void) {
   buf_mgr.flush(&buf_mgr);
   for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
     if (get_fd_of_table(i) != 0) {
-      free_page_clean(i);
+      /** free_page_clean(i); */
     }
   }
   buf_mgr_destructor(&buf_mgr);
