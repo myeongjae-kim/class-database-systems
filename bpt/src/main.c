@@ -267,7 +267,7 @@ int main(void)
 
 #ifdef TESTING
 TEST_SCRIPT:
-  open_table("test.db")
+  opened_table_id = open_table("test.db");
 #endif
 
 #ifndef TESTING
