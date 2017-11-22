@@ -1,0 +1,12 @@
+cscope*
+database
+*.o
+*.out
+ref
+input*
+output
+main
+lib/*.a
+temp
+log
+test*
