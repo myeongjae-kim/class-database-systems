@@ -1,0 +1,17 @@
+cscope*
+database
+*.o
+*.out
+ref
+input*
+output
+main
+lib/*.a
+temp
+log*
+test*
+perf*
+three.sh
+last_test.db
+db_*
+join_result
