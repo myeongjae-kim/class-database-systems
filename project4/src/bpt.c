@@ -506,15 +506,18 @@ int join_table(int table_id_1, int table_id_2, char * pathname) {
   int status = 0;
   int result_fd;
 
-  result_fd = open(pathname, O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE);
+
+  result_fd = open(pathname, O_RDWR | O_LARGEFILE);
   if (result_fd < 0) {
-    // Creating is failed.
-    perror("(open_table) Join result file opening is failed.");
-    return -1;
+    //create file
+    result_fd = open(pathname, O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE);
+    if (result_fd < 0) {
+      // Creating is failed.
+      perror("(open_table) Join result file opening is failed.");
+      return -1;
+    }
+    chmod(pathname, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   }
-  chmod(pathname, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-
 
   result_buf = (uint8_t*)calloc(result_buf_size,
       sizeof(*result_buf));
