@@ -453,10 +453,21 @@ frame_object_t * __LRU_tail_pop(buf_mgr_t * const this) {
   return rt_value;
 }
 
-void __flush(buf_mgr_t * const this) {
+void __flush_all(buf_mgr_t * const this) {
   int i;
   for (i = 0; i < this->num_of_frames; ++i) {
-    if (this->frames[i].table_id != 0) {
+    if (this->frames[i].table_id != 0
+        && get_fd_of_table(this->frames[i].table_id) != 0) {
+      this->frames[i].write(&this->frames[i]);
+    }
+  }
+}
+
+void __flush_table(buf_mgr_t * const this, int table_id) {
+  int i;
+  for (i = 0; i < this->num_of_frames; ++i) {
+    if (this->frames[i].table_id == table_id
+        && get_fd_of_table(this->frames[i].table_id) != 0) {
       this->frames[i].write(&this->frames[i]);
     }
   }
@@ -494,13 +505,14 @@ void buf_mgr_constructor(buf_mgr_t * const this, int num_of_frames){
 
   this->request_frame = __request_frame;
   this->release_frame = __release_frame;
-  this->flush = __flush;
+  this->flush_all = __flush_all;
+  this->flush_table = __flush_table;
 }
 
 
 void buf_mgr_destructor(buf_mgr_t * const this){
   //write every dirty page to disk before free.
-  this->flush(this);
+  this->flush_all(this);
   
   free(this->frames);
   free(this->LRU_queue_head);

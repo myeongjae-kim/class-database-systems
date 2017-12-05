@@ -489,6 +489,7 @@ end:
 #endif
 
   // TODO: Debugging free_page_clean();
+  close_table(opened_table_id);
   shutdown_db();
   remove_all_mapping_and_close();
   return 0;
