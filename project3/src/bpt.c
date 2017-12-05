@@ -375,10 +375,14 @@ int delete(int32_t table_id, int64_t key){
   return rt_value;
 }
 
+extern buf_mgr_t buf_mgr;
 
 int close_table(int table_id){
   // clear free pages.
-  free_page_clean(table_id);
+  /** free_page_clean(table_id); */
+
+  // flush buffer frames
+  buf_mgr.flush_table(&buf_mgr, table_id);
 
   int fd = get_fd_of_table(table_id);
   if(close(fd) < 0) {
@@ -394,8 +398,6 @@ int close_table(int table_id){
   }
 }
 
-extern buf_mgr_t buf_mgr;
-
 int init_db (int buf_num){
   buf_mgr_constructor(&buf_mgr, buf_num);
 }
@@ -404,7 +406,7 @@ int shutdown_db(void) {
   // free page clean
   int i;
 
-  buf_mgr.flush(&buf_mgr);
+  buf_mgr.flush_all(&buf_mgr);
   for (i = 0; i < MAX_TABLE_NUM + 1; ++i) {
     if (get_fd_of_table(i) != 0) {
       /** free_page_clean(i); */

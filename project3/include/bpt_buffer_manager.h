@@ -70,7 +70,8 @@ typedef struct __buf_mgr {
       const int32_t table_id, const int64_t page_number);
   bool (*release_frame)(struct __buf_mgr * const this,
       frame_object_t * frame);
-  void (*flush)(struct __buf_mgr * const this);
+  void (*flush_all)(struct __buf_mgr * const this);
+  void (*flush_table)(struct __buf_mgr * const this, int table_id);
 
 } buf_mgr_t;
 

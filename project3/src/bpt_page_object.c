@@ -459,7 +459,7 @@ bool __insert_into_parent(
 
   /* Case: new root */
   if (parent_offset == 0) {
-    return __insert_into_new_root(left, key, right) == true ? 0 : 1;
+    return __insert_into_new_root(left, key, right) == true ? 0 : -1;
   }
 
   /* Case: leaf or node. (Remainder of
@@ -487,7 +487,7 @@ bool __insert_into_parent(
   if (parent.get_number_of_keys(&parent) < (int64_t)OFFSET_ORDER - 1) {
     rt_value = __insert_into_node(&parent, left_index, key, right);
     page_object_destructor(&parent);
-    return rt_value == true ? 0 : 1;
+    return rt_value == true ? 0 : -1;
   }
 
 
