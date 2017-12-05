@@ -368,6 +368,9 @@ TEST_SCRIPT:
 #ifdef DBG
             printf("Insertion is successulf, Key: %ld, Value: %s\n", key, input_iterator);
 #endif
+          } else {
+            assert(false);
+            exit(1);
           }
 
 #ifdef DBG

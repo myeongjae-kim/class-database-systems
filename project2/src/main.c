@@ -8,9 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef DBG
 #include <assert.h>
-#endif
 
 // TODO: delete
 #include "bpt_header_object.h"
@@ -321,6 +319,8 @@ TEST_SCRIPT:
 #ifdef DBG
             printf("Key: %ld, Value: %s", key, input_iterator);
 #endif
+          } else {
+            assert(false);
           }
 
 #ifdef DBG

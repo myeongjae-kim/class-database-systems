@@ -299,7 +299,8 @@ int insert(int32_t table_id, int64_t key, char *value){
   page_object_constructor(&page,table_id, leaf_page);
   /** page.set_current_page_number(&page, leaf_page);
     * page.read(&page); */
-  assert(page.get_type(&page) == LEAF_PAGE);
+  /** assert(page.get_type(&page) == LEAF_PAGE); */
+  page.set_type(&page, LEAF_PAGE);
   if (page.insert_record(&page, &record)) {
     // insertion is successful.
     page_object_destructor(&page);
@@ -418,6 +419,7 @@ int shutdown_db(void) {
 #define GET_VALUE(page_obj, idx) (page_obj.page->content.records[idx].value)
 
 // return -1 when current idx is the last of the table
+inline
 int __advance_idx(page_object_t *page, int idx) {
   if (idx + 1 < page->get_number_of_keys(page)) {
     return idx + 1;
@@ -625,6 +627,7 @@ int join_table(int table_id_1, int table_id_2, char * pathname) {
       }
       memset(result_buf, 0, result_buf_size);
       result_buf_idx = 0;
+      fsync(result_fd);
     }
 
     // write record to result_buf
@@ -655,6 +658,7 @@ int join_table(int table_id_1, int table_id_2, char * pathname) {
     assert(false);
     exit(1);
   }
+  fsync(result_fd);
 
 end:
 

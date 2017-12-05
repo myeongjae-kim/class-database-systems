@@ -15,3 +15,4 @@ three.sh
 last_test.db
 db_*
 join_result
+join_marker

@@ -450,7 +450,11 @@ bool __insert_into_parent(
 
   /* Case: new root */
   if (parent_offset == 0) {
-    return __insert_into_new_root(left, key, right);
+    if(__insert_into_new_root(left, key, right)) {
+      return 0;
+    } else {
+      return -1;
+    }
   }
 
   /* Case: leaf or node. (Remainder of
@@ -474,7 +478,8 @@ bool __insert_into_parent(
   */
 
   if (parent.get_number_of_keys(&parent) < (int64_t)OFFSET_ORDER - 1) {
-    return __insert_into_node(&parent, left_index, key, right);
+    return __insert_into_node(&parent, left_index, key, right) == true
+      ? 0 : 1;
   }
 
 
@@ -694,12 +699,12 @@ void __remove_record_from_page(struct __page_object * const this,
   // i-1 is last key idex
   // If no compaction, no redundancy is exist.
   /** if (1 < i && i < this->page.header.number_of_keys) {
-    *   assert(memcmp(&this->page.content.records[i-1],
-    *         &this->page.content.records[i-2],
-    *         sizeof(this->page.content.records[i-1])) == 0);
-    *   memset(&this->page.content.records[i-1], 0,
-    *       sizeof(this->page.content.records[i-1]));
-    * } */
+   *   assert(memcmp(&this->page.content.records[i-1],
+   *         &this->page.content.records[i-2],
+   *         sizeof(this->page.content.records[i-1])) == 0);
+   *   memset(&this->page.content.records[i-1], 0,
+   *       sizeof(this->page.content.records[i-1]));
+   * } */
 
   // Remove redundancy
   memset(&this->page.content.records[i-1], 0,
@@ -836,17 +841,17 @@ void  __remove_key_and_offset_from_page(struct __page_object * const this,
   // Remove redundancy
   // i-1 is last key idex
   /** if (1 < i && i < this->page.header.number_of_keys) {
-    *   assert(memcmp(&this->page.content.key_and_offsets[i-1],
-    *         &this->page.content.key_and_offsets[i-2],
-    *         sizeof(this->page.content.key_and_offsets[i-1])) == 0);
-    *   memset(&this->page.content.key_and_offsets[i-1], 0,
-    *       sizeof(this->page.content.key_and_offsets[i-1]));
-    * } */
+   *   assert(memcmp(&this->page.content.key_and_offsets[i-1],
+   *         &this->page.content.key_and_offsets[i-2],
+   *         sizeof(this->page.content.key_and_offsets[i-1])) == 0);
+   *   memset(&this->page.content.key_and_offsets[i-1], 0,
+   *       sizeof(this->page.content.key_and_offsets[i-1]));
+   * } */
 
 
   // Remove redundancy
-    memset(&this->page.content.key_and_offsets[i-1], 0,
-        sizeof(this->page.content.key_and_offsets[i-1]));
+  memset(&this->page.content.key_and_offsets[i-1], 0,
+      sizeof(this->page.content.key_and_offsets[i-1]));
 
 
   // One key fewer
@@ -896,10 +901,10 @@ bool __coalesce_nodes(struct __page_object * this,
    */
 
   /** if (neighbor_is_right == false) {
-    *   struct __page_object * temp = this;
-    *   this = neighbor_page;
-    *   neighbor_page = temp;
-    * } */
+   *   struct __page_object * temp = this;
+   *   this = neighbor_page;
+   *   neighbor_page = temp;
+   * } */
 
   // Now, 'this' is in left, and 'neighbor_page' is in right.
 

@@ -459,7 +459,7 @@ bool __insert_into_parent(
 
   /* Case: new root */
   if (parent_offset == 0) {
-    return __insert_into_new_root(left, key, right);
+    return __insert_into_new_root(left, key, right) == true ? 0 : 1;
   }
 
   /* Case: leaf or node. (Remainder of
@@ -483,11 +483,11 @@ bool __insert_into_parent(
   /* Simple case: the new key fits into the node.
   */
 
-  bool rt_value;
+  bool result;
   if (parent.get_number_of_keys(&parent) < (int64_t)OFFSET_ORDER - 1) {
-    rt_value = __insert_into_node(&parent, left_index, key, right);
+    result = __insert_into_node(&parent, left_index, key, right);
     page_object_destructor(&parent);
-    return rt_value;
+    return result == true ? 0 : 1;
   }
 
 
@@ -495,6 +495,7 @@ bool __insert_into_parent(
    * to preserve the B+ tree properties.
    */
 
+  bool rt_value;
   rt_value =  __insert_into_node_after_splitting(
       &parent, left_index, key, right);
 

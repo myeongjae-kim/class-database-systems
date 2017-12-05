@@ -299,7 +299,7 @@ int insert(int32_t table_id, int64_t key, char *value){
   page_object_constructor(&page,table_id, leaf_page);
   /** page.set_current_page_number(&page, leaf_page);
     * page.read(&page); */
-  assert(page.get_type(&page) == LEAF_PAGE);
+  page.type = LEAF_PAGE;
   if (page.insert_record(&page, &record)) {
     // insertion is successful.
     page_object_destructor(&page);
