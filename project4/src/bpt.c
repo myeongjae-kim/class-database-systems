@@ -645,15 +645,23 @@ int join_table(int table_id_1, int table_id_2, char * pathname) {
       break;
     }
 
-    while(GET_KEY(left_tbl_pg, i) < GET_KEY(right_tbl_pg, j)) {
-      i = __advance_idx(&left_tbl_pg, i);
-    }
+    while (GET_KEY(left_tbl_pg, i) != GET_KEY(right_tbl_pg, j)) {
+      while(GET_KEY(left_tbl_pg, i) < GET_KEY(right_tbl_pg, j)) {
+        i = __advance_idx(&left_tbl_pg, i);
+        if (i < 0) {
+          goto break_loop;
+        }
+      }
 
-    while(GET_KEY(left_tbl_pg, i) > GET_KEY(right_tbl_pg, j)) {
-      j = __advance_idx(&right_tbl_pg, j);
+      while(GET_KEY(left_tbl_pg, i) > GET_KEY(right_tbl_pg, j)) {
+        j = __advance_idx(&right_tbl_pg, j);
+        if (j < 0) {
+          goto break_loop;
+        }
+      }
     }
   } while(i >= 0 && j >= 0);
-
+break_loop:
 
   //flush buffer
   if (write(result_fd, result_buf, result_buf_idx) < 0) {
