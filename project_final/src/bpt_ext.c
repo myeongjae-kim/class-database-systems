@@ -10,11 +10,13 @@ int init_db(uint64_t num_buf){
 
 int shutdown_db(){
 	close_conn(&c);
+  close_all_log_file();
 	return 0;
 }
 
 int open_table(char *pathname){
 	int table_id = open_table_low(&c, pathname);
+  open_log_file(table_id);
 
 #ifdef VERBOSE_TREE
 	if (table_id >= 0)
@@ -25,6 +27,7 @@ int open_table(char *pathname){
 
 int close_table(int table_id){
 	close_table_low(&c.tbls[table_id]);
+  close_log_file(table_id);
 	return 0;
 }
 

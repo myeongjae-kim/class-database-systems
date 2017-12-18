@@ -41,9 +41,9 @@ typedef struct nblock{
 	addr parent; //8
 	int is_leaf; // 4
 	int num_keys; // 4
-  int64_t pad1; // 8
+  uint8_t pad1[8]; // 8
   int64_t page_lsn; // 8
-	uint8_t pad2[96]; // 96
+	uint8_t pad2[88]; // 88
 	union{
 		addr sib;
 		addr leftmost;
@@ -160,6 +160,14 @@ page *get_page(table *t, addr ad);
 void flush_page(table *t);
 int init_bufmgr(conn *c, int buf_num);
 void close_bufmgr(conn *c);
+
+// Log managing functions
+int open_log_file(int table_id);
+int log_flush(int table_id);
+int log_write(int table_id, log_t *log);
+int close_log_file(int table_id);
+int close_all_log_file();
+
 
 //Helper functions
 npage *find_leaf(table *t, const int64_t k);
