@@ -165,6 +165,9 @@ void close_bufmgr(conn *c);
 int open_log_file(int table_id);
 int log_flush(int table_id);
 int log_write(int table_id, log_t *log);
+int begin_transaction(int table_id);
+int commit_transaction(int table_id);
+int abort_transaction(int table_id);
 int close_log_file(int table_id);
 int close_all_log_file();
 

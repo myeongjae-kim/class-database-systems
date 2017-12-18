@@ -78,6 +78,9 @@ int shell(){
 			while (getchar() != (int)'\n');
 			return 0;
 			break;
+		case 't':
+
+      break;
 		}
 		while (getchar() != (int)'\n');
 		printf("> ");
