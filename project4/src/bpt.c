@@ -421,7 +421,6 @@ int shutdown_db(void) {
 #define GET_VALUE(page_obj, idx) (page_obj.page->content.records[idx].value)
 
 // return -1 when current idx is the last of the table
-inline
 int __advance_idx(page_object_t *page, int idx) {
   if (idx + 1 < page->get_number_of_keys(page)) {
     return idx + 1;

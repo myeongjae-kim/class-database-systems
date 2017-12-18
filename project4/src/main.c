@@ -184,14 +184,29 @@ int main(void)
 
 #ifdef DBG
   // temp codes
-  /** int table1 = open_table("database");
-    * int table2 = open_table("db");
-    * insert(table1, 100, "hudred");
-    * insert(table2, 200, "two hudred");
-    * printf("%s\n", find(table1, 100));
-    * printf("%s\n", find(table2, 200));
-    * exit(0); */
 
+  int l, table1, table2, table3, table4, table5;
+  for (l = 0; l < 10; ++l) {
+    table1 = open_table("ddd1");
+    table2 = open_table("ddd2");
+    table3 = open_table("ddd3");
+    table4 = open_table("ddd4");
+    table5 = open_table("ddd5");
+    insert(table1, l, "tbl1");
+    insert(table2, l, "tbl2");
+    printf("%s\n", find(table1, l));
+    printf("%s\n", find(table2, l));
+    close_table(table1);
+    close_table(table2);
+    close_table(table3);
+    close_table(table4);
+    close_table(table5);
+  }
+
+  shutdown_db();
+  remove_all_mapping_and_close();
+
+  exit(0);
 #endif
 
   // Open database first

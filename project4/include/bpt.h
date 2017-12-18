@@ -18,7 +18,7 @@
 #include <assert.h>
 // #define assert(x);
 
-// #define DBG
+#define DBG
 // #define TESTING
 
 #define BUF_FRAME_NUM 16
